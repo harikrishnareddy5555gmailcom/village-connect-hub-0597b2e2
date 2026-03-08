@@ -27,31 +27,29 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
 
-// ── Layout routes (use Outlet, compatible with React Router refs) ──
+const LoadingScreen = () => (
+  <div className="flex items-center justify-center min-h-screen" style={{ background: "hsl(120 20% 97%)" }}>
+    <div className="flex flex-col items-center gap-4">
+      <Loader2 size={36} className="animate-spin" style={{ color: "hsl(142 70% 30%)" }} />
+      <p style={{ color: "hsl(140 15% 45%)", fontSize: "0.875rem" }}>Loading Village Connect...</p>
+    </div>
+  </div>
+);
 
+// Guards as layout routes (use Outlet — avoids React Router ref warning)
 function AuthGuard() {
-  const { user, profile, role, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 size={36} className="animate-spin text-primary" />
-          <p className="text-muted-foreground text-sm">Loading Village Connect...</p>
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (profile?.status === "pending") return <Navigate to="/pending-approval" replace />;
   if (profile?.status === "banned" || profile?.status === "suspended") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen" style={{ background: "hsl(120 20% 97%)" }}>
         <div className="text-center p-8">
-          <p className="text-2xl mb-3">🚫</p>
-          <h2 className="font-bold text-xl text-foreground mb-2">Account Suspended</h2>
-          <p className="text-muted-foreground text-sm">Contact your village admin for help.</p>
+          <p style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>🚫</p>
+          <h2 style={{ fontWeight: 700, fontSize: "1.25rem", marginBottom: "0.5rem" }}>Account Suspended</h2>
+          <p style={{ color: "hsl(140 15% 45%)", fontSize: "0.875rem" }}>Contact your village admin for help.</p>
         </div>
       </div>
     );
@@ -65,7 +63,8 @@ function AuthGuard() {
 }
 
 function AdminGuard() {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
+  if (loading) return <LoadingScreen />;
   if (role !== "admin" && role !== "super_admin" && role !== "moderator") {
     return <Navigate to="/feed" replace />;
   }
@@ -74,7 +73,7 @@ function AdminGuard() {
 
 function GuestGuard() {
   const { user, profile, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <LoadingScreen />;
   if (user && profile?.status === "active") return <Navigate to="/feed" replace />;
   if (user && profile?.status === "pending") return <Navigate to="/pending-approval" replace />;
   return <Outlet />;
@@ -84,9 +83,9 @@ function ComingSoon({ title, emoji }: { title: string; emoji: string }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
       <div className="text-6xl mb-4">{emoji}</div>
-      <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
-      <p className="text-muted-foreground">This section is coming soon!</p>
-      <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
+      <h2 className="text-2xl font-bold mb-2">{title}</h2>
+      <p style={{ color: "hsl(140 15% 45%)" }}>This section is coming soon!</p>
+      <p style={{ color: "hsl(140 15% 45%)", fontSize: "0.75rem", marginTop: "0.25rem" }}>మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
     </div>
   );
 }
@@ -96,7 +95,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/feed" replace />} />
 
-      {/* Guest-only routes */}
+      {/* Guest-only */}
       <Route element={<GuestGuard />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -104,7 +103,7 @@ function AppRoutes() {
 
       <Route path="/pending-approval" element={<PendingApprovalPage />} />
 
-      {/* Protected routes (wrapped in AppLayout via AuthGuard) */}
+      {/* Protected — wrapped in AppLayout via AuthGuard */}
       <Route element={<AuthGuard />}>
         <Route path="/feed" element={<FeedPage />} />
         <Route path="/discussions" element={<DiscussionsPage />} />
@@ -114,8 +113,10 @@ function AppRoutes() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/map" element={<ComingSoon title="Village Map" emoji="🗺️" />} />
         <Route path="/profile" element={<ProfilePage />} />
+      </Route>
 
-        {/* Admin-only nested routes */}
+      {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
+      <Route element={<AuthGuard />}>
         <Route element={<AdminGuard />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
