@@ -327,11 +327,11 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = ({ post }) => {
           className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors",
             post.liked_by_user
-              ? "text-red-500 bg-red-50"
-              : "text-muted-foreground hover:text-red-500 hover:bg-red-50"
+              ? "text-destructive bg-destructive/10"
+              : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
           )}
         >
-          <Heart size={16} className={post.liked_by_user ? "fill-red-500" : ""} />
+          <Heart size={16} className={post.liked_by_user ? "fill-destructive" : ""} />
           <span className="font-medium">{post.likes_count}</span>
         </button>
 
