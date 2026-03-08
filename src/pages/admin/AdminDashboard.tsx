@@ -56,7 +56,7 @@ const AdminDashboard: React.FC = () => {
 
   const approveUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('profiles')
         .update({ status: 'active' })
         .eq('user_id', userId);
