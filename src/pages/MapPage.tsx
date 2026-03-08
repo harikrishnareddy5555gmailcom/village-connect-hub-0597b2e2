@@ -165,7 +165,9 @@ const MapPage: React.FC = () => {
   const hasLocation = !!(currentVillage?.latitude && currentVillage?.longitude);
 
   const mappedBusinesses = businesses.filter(b => b.latitude && b.longitude);
-  const mappedComplaints = complaints.filter((c: any) => c.latitude && c.longitude);
+  const mappedComplaints = complaints
+    .filter((c: any) => c.latitude && c.longitude)
+    .filter((c: any) => complaintStatusFilter === 'all' || c.status === complaintStatusFilter);
 
   const complaintIcon = (status: string) => {
     if (status === 'resolved') return complaintResolvedIcon;

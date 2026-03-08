@@ -380,7 +380,7 @@ const ComplaintsPage: React.FC = () => {
                             {(['reported', 'in_progress', 'resolved'] as const).map(s => (
                               <button
                                 key={s}
-                                onClick={() => updateStatus.mutate({ id: c.id, status: s })}
+                                onClick={() => updateStatus.mutate({ id: c.id, status: s, reporterId: c.reporter_id, complaintTitle: c.title })}
                                 disabled={c.status === s || updateStatus.isPending}
                                 className={cn(
                                   'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
