@@ -54,7 +54,7 @@ const CreatePost: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: async ({ isAnnouncement }: { isAnnouncement?: boolean }) => {
       if (!currentVillage || !user) throw new Error('No village selected');
-      const { error } = await supabase.from('posts').insert({
+      const { error } = await (supabase.from('posts') as any).insert({
         village_id: currentVillage.id,
         author_id: user.id,
         content,
