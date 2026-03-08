@@ -171,5 +171,6 @@
 }
 
 .animate-fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+.animate-fade-in { animation: fadeInUp 0.3s ease-out forwards; }
 .animate-slide-in-left { animation: slideInLeft 0.3s ease-out forwards; }
 .animate-pulse-green { animation: pulse-green 2s infinite; }

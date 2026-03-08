@@ -178,7 +178,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative min-h-0">
+      <div className="flex-1 relative min-h-0" style={{ minHeight: '300px' }}>
         {!currentVillage ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <MapPin size={40} className="opacity-30" />
@@ -188,8 +188,7 @@ const MapPage: React.FC = () => {
           <MapContainer
             center={[lat, lng]}
             zoom={14}
-            className="w-full h-full"
-            style={{ minHeight: '400px' }}
+            style={{ width: '100%', height: '100%', minHeight: '300px', position: 'absolute', inset: 0 }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

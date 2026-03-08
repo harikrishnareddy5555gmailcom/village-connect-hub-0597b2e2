@@ -97,7 +97,7 @@ const RegisterPage: React.FC = () => {
               <div>
                 <Label htmlFor="mobile" className="text-sm font-medium">Mobile Number</Label>
                 <div className="relative mt-1.5">
-                  <Phone size={16} className="absolute left-3 top-1/2 -translate y-1/2 text-muted-foreground" />
+                  <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="mobile"
                     type="tel"
