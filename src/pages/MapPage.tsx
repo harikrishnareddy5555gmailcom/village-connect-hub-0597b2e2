@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useVillage } from '@/contexts/VillageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, Building2, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info } from 'lucide-react';
+import { MapPin, Building2, AlertTriangle, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -51,6 +51,9 @@ const createDraggableIcon = (color: string, emoji: string) =>
 const villageIcon = createIcon('hsl(142,70%,30%)', '🏘️');
 const villageDraggableIcon = createDraggableIcon('hsl(142,70%,30%)', '🏘️');
 const businessIcon = createIcon('hsl(280,60%,50%)', '🏪');
+const complaintReportedIcon = createIcon('hsl(38,95%,50%)', '⚠️');
+const complaintProgressIcon = createIcon('hsl(210,80%,50%)', '🔧');
+const complaintResolvedIcon = createIcon('hsl(142,60%,42%)', '✅');
 
 function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
@@ -72,6 +75,7 @@ const MapPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [showBusinesses, setShowBusinesses] = useState(true);
+  const [showComplaints, setShowComplaints] = useState(true);
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
   const [editingPin, setEditingPin] = useState(false);
@@ -88,6 +92,22 @@ const MapPage: React.FC = () => {
       const { data, error } = await supabase
         .from('businesses')
         .select('id, name, category, address, phone, is_verified, latitude, longitude')
+        .eq('village_id', currentVillage!.id)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: complaints = [], isLoading: loadingComplaints } = useQuery({
+    queryKey: ['map-complaints', currentVillage?.id],
+    enabled: !!currentVillage,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('complaints')
+        .select('id, title, category, status, location_tag, latitude, longitude')
         .eq('village_id', currentVillage!.id)
         .not('latitude', 'is', null)
         .not('longitude', 'is', null)
@@ -137,13 +157,21 @@ const MapPage: React.FC = () => {
     saveLocation.mutate({ newLat: pendingLat, newLng: pendingLng });
   };
 
-  const isLoading = loadingBusinesses;
+  const isLoading = loadingBusinesses || loadingComplaints;
 
   const displayLat = editingPin ? (pendingLat ?? lat) : lat;
   const displayLng = editingPin ? (pendingLng ?? lng) : lng;
   const hasLocation = !!(currentVillage?.latitude && currentVillage?.longitude);
 
   const mappedBusinesses = businesses.filter(b => b.latitude && b.longitude);
+  const mappedComplaints = complaints.filter((c: any) => c.latitude && c.longitude);
+
+  const complaintIcon = (status: string) => {
+    if (status === 'resolved') return complaintResolvedIcon;
+    if (status === 'in_progress') return complaintProgressIcon;
+    return complaintReportedIcon;
+  };
+
 
   return (
     <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
@@ -223,6 +251,16 @@ const MapPage: React.FC = () => {
         </div>
         <div className="w-px h-3 bg-border" />
         <button
+          onClick={() => setShowComplaints(v => !v)}
+          className={cn(
+            "flex items-center gap-1.5 text-xs whitespace-nowrap px-2 py-1 rounded-full border transition-colors",
+            showComplaints ? "bg-yellow-50 text-yellow-800 border-yellow-200" : "text-muted-foreground border-transparent"
+          )}
+        >
+          {showComplaints ? <Eye size={11} /> : <EyeOff size={11} />}
+          <AlertTriangle size={11} className="ml-0.5" /> {mappedComplaints.length} Complaints
+        </button>
+        <button
           onClick={() => setShowBusinesses(v => !v)}
           className={cn(
             "flex items-center gap-1.5 text-xs whitespace-nowrap px-2 py-1 rounded-full border transition-colors",
@@ -237,6 +275,7 @@ const MapPage: React.FC = () => {
           Only pinned locations shown
         </div>
       </div>
+
 
       {/* Map */}
       <div className="flex-1" style={{ minHeight: 0, position: 'relative', zIndex: 0 }}>
@@ -329,6 +368,38 @@ const MapPage: React.FC = () => {
                 </Popup>
               </Marker>
             ))}
+
+            {/* Complaints — only those with real GPS coordinates */}
+            {showComplaints && mappedComplaints.map((c: any) => (
+              <Marker
+                key={c.id}
+                position={[Number(c.latitude), Number(c.longitude)]}
+                icon={complaintIcon(c.status)}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[160px]">
+                    <p className="font-semibold text-sm leading-tight mb-1">{c.title}</p>
+                    <p className="text-xs text-gray-500 mb-1">📂 {c.category}</p>
+                    {c.location_tag && <p className="text-xs text-gray-500 mb-1">📍 {c.location_tag}</p>}
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${
+                      c.status === 'resolved' ? 'bg-green-50 text-green-700 border-green-200' :
+                      c.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      'bg-yellow-50 text-yellow-700 border-yellow-200'
+                    }`}>
+                      {c.status.replace('_', ' ')}
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline mt-1 block"
+                    >
+                      View on Google Maps
+                    </a>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         )}
       </div>
@@ -339,6 +410,9 @@ const MapPage: React.FC = () => {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legend</p>
           {[
             { color: 'hsl(142,70%,30%)', label: 'Village', emoji: '🏘️' },
+            { color: 'hsl(38,95%,50%)', label: 'Reported', emoji: '⚠️' },
+            { color: 'hsl(210,80%,50%)', label: 'In Progress', emoji: '🔧' },
+            { color: 'hsl(142,60%,42%)', label: 'Resolved', emoji: '✅' },
             { color: 'hsl(280,60%,50%)', label: 'Business', emoji: '🏪' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1 whitespace-nowrap">
@@ -349,11 +423,6 @@ const MapPage: React.FC = () => {
               <span className="text-[10px] text-muted-foreground">{item.label}</span>
             </div>
           ))}
-          {mappedBusinesses.length === 0 && (
-            <p className="text-[10px] text-muted-foreground ml-2">
-              No businesses with saved locations yet. Business owners can pin their location when listing.
-            </p>
-          )}
         </div>
       </div>
     </div>
@@ -361,3 +430,4 @@ const MapPage: React.FC = () => {
 };
 
 export default MapPage;
+
