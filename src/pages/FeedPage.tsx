@@ -180,10 +180,11 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = ({ post }) => {
   // Like mutation
   const likeMutation = useMutation({
     mutationFn: async () => {
+      const sb = supabase as any;
       if (post.liked_by_user) {
-        await supabase.from('likes').delete().eq('post_id', post.id).eq('user_id', user!.id);
+        await sb.from('likes').delete().eq('post_id', post.id).eq('user_id', user!.id);
       } else {
-        await supabase.from('likes').insert({ post_id: post.id, user_id: user!.id });
+        await sb.from('likes').insert({ post_id: post.id, user_id: user!.id });
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['posts'] }),
@@ -193,7 +194,7 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = ({ post }) => {
   const commentMutation = useMutation({
     mutationFn: async () => {
       if (!commentText.trim()) throw new Error('Empty comment');
-      const { error } = await supabase.from('comments').insert({
+      const { error } = await (supabase as any).from('comments').insert({
         post_id: post.id,
         author_id: user!.id,
         content: commentText,
@@ -211,7 +212,7 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = ({ post }) => {
   // Delete post mutation
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('posts').update({ is_deleted: true }).eq('id', post.id);
+      const { error } = await (supabase as any).from('posts').update({ is_deleted: true }).eq('id', post.id);
       if (error) throw error;
     },
     onSuccess: () => {
