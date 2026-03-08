@@ -382,6 +382,9 @@ const MapPage: React.FC = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <RecenterMap lat={displayLat} lng={displayLng} />
+            {userLat && userLng && (
+              <FlyToUser lat={userLat} lng={userLng} trigger={flyTrigger} />
+            )}
 
             {editingPin && (
               <MapClickHandler onPick={(la, lo) => {
@@ -421,6 +424,18 @@ const MapPage: React.FC = () => {
                     ) : (
                       <p className="text-xs text-orange-500 mt-1">📍 Approximate location</p>
                     )}
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* User's current location marker */}
+            {userLat && userLng && (
+              <Marker position={[userLat, userLng]} icon={userLocationIcon}>
+                <Popup>
+                  <div className="p-1">
+                    <p className="font-semibold text-sm">📍 You are here</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{userLat.toFixed(5)}, {userLng.toFixed(5)}</p>
                   </div>
                 </Popup>
               </Marker>
