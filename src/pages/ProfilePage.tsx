@@ -75,17 +75,22 @@ const ProfilePage: React.FC = () => {
       {/* Avatar & Name Banner */}
       <div className="vcp-card p-6">
         <div className="flex flex-col sm:flex-row items-center gap-5">
-          <div className="relative">
+          <div className="relative group">
             <Avatar className="w-24 h-24 ring-4 ring-primary/20">
               <AvatarImage src={profile.avatar_url ?? ''} />
               <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-bold">
                 {profile.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
               </AvatarFallback>
             </Avatar>
-            <label className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary-dark transition-colors">
-              {uploading ? <Loader2 size={14} className="text-white animate-spin" /> : <Camera size={14} className="text-white" />}
-              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            <label className="absolute inset-0 rounded-full flex items-center justify-center cursor-pointer bg-foreground/0 group-hover:bg-foreground/40 transition-all duration-200">
+              {uploading
+                ? <Loader2 size={20} className="text-background animate-spin" />
+                : <Camera size={20} className="text-background opacity-0 group-hover:opacity-100 transition-opacity" />}
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploading} />
             </label>
+            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary rounded-full flex items-center justify-center border-2 border-background pointer-events-none">
+              {uploading ? <Loader2 size={12} className="text-primary-foreground animate-spin" /> : <Camera size={12} className="text-primary-foreground" />}
+            </div>
           </div>
           <div className="text-center sm:text-left flex-1">
             <h2 className="text-2xl font-bold text-foreground">{profile.full_name}</h2>
