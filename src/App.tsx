@@ -86,35 +86,39 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <VillageProvider>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Navigate to="/feed" replace />} />
-              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-              <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-              <Route path="/pending-approval" element={<PendingApprovalPage />} />
-
-              {/* Protected Routes */}
-              <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
-              <Route path="/discussions" element={<ProtectedRoute><DiscussionsPage /></ProtectedRoute>} />
-              <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
-              <Route path="/complaints" element={<ProtectedRoute><ComplaintsPage /></ProtectedRoute>} />
-              <Route path="/businesses" element={<ProtectedRoute><BusinessDirectoryPage /></ProtectedRoute>} />
-              <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-              <Route path="/map" element={<ProtectedRoute><ComingSoon title="Village Map" emoji="🗺️" /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-
-              {/* Admin Routes */}
-              <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserManagementPage /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
-
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </VillageProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+);
+
+const AppRoutes = () => (
+  <Routes>
+    {/* Public Routes */}
+    <Route path="/" element={<Navigate to="/feed" replace />} />
+    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+    <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+    <Route path="/pending-approval" element={<PendingApprovalPage />} />
+
+    {/* Protected Routes */}
+    <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
+    <Route path="/discussions" element={<ProtectedRoute><DiscussionsPage /></ProtectedRoute>} />
+    <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+    <Route path="/complaints" element={<ProtectedRoute><ComplaintsPage /></ProtectedRoute>} />
+    <Route path="/businesses" element={<ProtectedRoute><BusinessDirectoryPage /></ProtectedRoute>} />
+    <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
+    <Route path="/map" element={<ProtectedRoute><ComingSoon title="Village Map" emoji="🗺️" /></ProtectedRoute>} />
+    <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+    {/* Admin Routes */}
+    <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+    <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserManagementPage /></ProtectedRoute>} />
+    <Route path="/admin/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
+
+    <Route path="*" element={<NotFound />} />
+  </Routes>
 );
 
 export default App;
