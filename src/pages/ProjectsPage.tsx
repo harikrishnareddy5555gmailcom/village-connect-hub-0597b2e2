@@ -3,15 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Briefcase, Plus, X, Loader2, IndianRupee, Calendar, Users } from 'lucide-react';
+import {
+  Briefcase, Plus, X, Loader2, IndianRupee, Calendar, Users,
+  Trash2, MessageSquare, Send, Star, ChevronDown, ChevronUp
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG = {
@@ -20,8 +24,145 @@ const STATUS_CONFIG = {
   completed: { label: 'Completed', color: 'bg-success/15 text-green-700 border-success/30' },
   delayed: { label: 'Delayed', color: 'bg-warning/15 text-yellow-700 border-warning/30' },
 };
-
 const progressMap: Record<string, number> = { planned: 0, in_progress: 50, completed: 100, delayed: 30 };
+
+// ---- Project Reviews/Comments Panel ----
+const ProjectUpdates: React.FC<{ projectId: string }> = ({ projectId }) => {
+  const { user, role, profile } = useAuth();
+  const queryClient = useQueryClient();
+  const [text, setText] = useState('');
+  const [updateType, setUpdateType] = useState<'comment' | 'review'>('comment');
+
+  const { data: updates = [], isLoading } = useQuery({
+    queryKey: ['project-updates', projectId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('project_updates')
+        .select('*, profiles(full_name, avatar_url)')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const addUpdate = useMutation({
+    mutationFn: async () => {
+      if (!text.trim()) throw new Error('Write something first');
+      const { error } = await (supabase as any).from('project_updates').insert({
+        project_id: projectId,
+        author_id: user!.id,
+        content: text,
+        update_type: updateType,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setText('');
+      queryClient.invalidateQueries({ queryKey: ['project-updates', projectId] });
+      toast.success(`${updateType === 'review' ? 'Review' : 'Comment'} posted!`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteUpdate = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('project_updates').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-updates', projectId] });
+      toast.success('Deleted');
+    },
+  });
+
+  const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border space-y-3">
+      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+        <MessageSquare size={12} /> Discussions & Reviews ({updates.length})
+      </h5>
+
+      {/* Input area */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          {(['comment', 'review'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setUpdateType(t)}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize',
+                updateType === t
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border text-muted-foreground hover:border-primary/50'
+              )}
+            >
+              {t === 'review' ? '⭐ Review' : '💬 Comment'}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={updateType === 'review' ? 'Share your review...' : 'Post a comment...'}
+            onKeyDown={e => e.key === 'Enter' && !addUpdate.isPending && addUpdate.mutate()}
+            className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-primary/50 text-foreground placeholder:text-muted-foreground"
+          />
+          <button
+            onClick={() => addUpdate.mutate()}
+            disabled={!text.trim() || addUpdate.isPending}
+            className="px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            <Send size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Updates list */}
+      {isLoading ? (
+        <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-primary" /></div>
+      ) : updates.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-3">No discussions yet. Be the first!</p>
+      ) : (
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+          {updates.map((u: any) => (
+            <div key={u.id} className="flex gap-2">
+              <Avatar className="w-7 h-7 flex-shrink-0">
+                <AvatarFallback className="text-[10px] bg-muted text-muted-foreground font-bold">
+                  {u.profiles?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 bg-muted/50 rounded-lg px-3 py-2">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold text-foreground">{u.profiles?.full_name}</p>
+                    {u.update_type === 'review' && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
+                    </span>
+                    {(isAdmin || u.author_id === user?.id) && (
+                      <button
+                        onClick={() => deleteUpdate.mutate(u.id)}
+                        className="text-muted-foreground hover:text-destructive ml-1"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{u.content}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ---- Project Card ----
 interface ProjectCardProps {
@@ -29,13 +170,15 @@ interface ProjectCardProps {
   isAdmin: boolean;
   onStatusChange: (status: string, progress: number) => void;
   onProgressChange: (progress: number) => void;
+  onDelete: () => void;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatusChange, onProgressChange }) => {
+const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatusChange, onProgressChange, onDelete }) => {
   const statusCfg = STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG];
   const prog = p.progress ?? progressMap[p.status] ?? 0;
   const [sliderVal, setSliderVal] = useState(prog);
   const [showSlider, setShowSlider] = useState(false);
+  const [showDiscussion, setShowDiscussion] = useState(false);
 
   return (
     <div className="vcp-card p-5">
@@ -48,9 +191,20 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatus
             </p>
           )}
         </div>
-        <span className={`border rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${statusCfg?.color}`}>
-          {statusCfg?.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`border rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${statusCfg?.color}`}>
+            {statusCfg?.label}
+          </span>
+          {isAdmin && (
+            <button
+              onClick={onDelete}
+              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title="Delete project"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {p.description && <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{p.description}</p>}
@@ -100,7 +254,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatus
               </button>
             ))}
           </div>
-
           {/* Progress slider */}
           <div>
             <button
@@ -115,9 +268,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatus
                   <Slider
                     value={[sliderVal]}
                     onValueChange={([v]) => setSliderVal(v)}
-                    min={0}
-                    max={100}
-                    step={5}
+                    min={0} max={100} step={5}
                     className="flex-1"
                   />
                   <span className="text-xs font-bold text-primary w-8 text-right">{sliderVal}%</span>
@@ -134,6 +285,16 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatus
           </div>
         </div>
       )}
+
+      {/* Discussions toggle */}
+      <button
+        onClick={() => setShowDiscussion(v => !v)}
+        className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-3 pt-2 border-t border-border w-full"
+      >
+        {showDiscussion ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        Discussions & Reviews
+      </button>
+      {showDiscussion && <ProjectUpdates projectId={p.id} />}
     </div>
   );
 };
@@ -203,6 +364,18 @@ const ProjectsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Project updated');
     },
+  });
+
+  const deleteProject = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('projects').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success('Project deleted');
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   return (
@@ -291,6 +464,11 @@ const ProjectsPage: React.FC = () => {
           <div className="text-5xl mb-3">🏗️</div>
           <p className="font-medium text-foreground">No projects yet</p>
           <p className="text-sm text-muted-foreground mt-1">Village development projects will appear here</p>
+          {isAdmin && (
+            <Button className="btn-primary-gradient mt-4" size="sm" onClick={() => setShowForm(true)}>
+              <Plus size={14} className="mr-1" /> Add First Project
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -299,12 +477,9 @@ const ProjectsPage: React.FC = () => {
               key={p.id}
               project={p}
               isAdmin={isAdmin}
-              onStatusChange={(status, progress) =>
-                updateProject.mutate({ id: p.id, status, progress })
-              }
-              onProgressChange={(progress) =>
-                updateProject.mutate({ id: p.id, progress })
-              }
+              onStatusChange={(status, progress) => updateProject.mutate({ id: p.id, status, progress })}
+              onProgressChange={(progress) => updateProject.mutate({ id: p.id, progress })}
+              onDelete={() => deleteProject.mutate(p.id)}
             />
           ))}
         </div>
