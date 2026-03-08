@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
-  LogOut, MapPin, BarChart3,
+  LogOut, MapPin, BarChart3, Globe,
   Menu, X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
