@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useVillage } from '@/contexts/VillageContext';
-import { MapPin, AlertTriangle, Building2, Loader2, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { MapPin, AlertTriangle, Building2, Loader2, Eye, EyeOff, Move, Trash2, Save, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // Fix Leaflet default icon broken in Vite/Webpack
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -31,7 +33,23 @@ const createIcon = (color: string, emoji: string) =>
     popupAnchor: [0, -36],
   });
 
+const createDraggableIcon = (color: string, emoji: string) =>
+  L.divIcon({
+    className: '',
+    html: `<div style="
+      background:${color};border:3px solid white;border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);width:38px;height:38px;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 3px 12px rgba(0,0,0,0.4);cursor:grab;">
+      <span style="transform:rotate(45deg);font-size:16px;line-height:1;">${emoji}</span>
+    </div>`,
+    iconSize: [38, 38],
+    iconAnchor: [19, 38],
+    popupAnchor: [0, -42],
+  });
+
 const villageIcon = createIcon('hsl(142,70%,30%)', '🏘️');
+const villageDraggableIcon = createDraggableIcon('hsl(142,70%,30%)', '🏘️');
 const complaintReportedIcon = createIcon('hsl(38,95%,50%)', '⚠️');
 const complaintResolvedIcon = createIcon('hsl(142,60%,42%)', '✅');
 const complaintProgressIcon = createIcon('hsl(210,80%,50%)', '🔧');
@@ -49,13 +67,28 @@ function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
+// Click handler for placing new village pin
+function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({ click(e) { onPick(e.latlng.lat, e.latlng.lng); } });
+  return null;
+}
+
 const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
 
 const MapPage: React.FC = () => {
-  const { currentVillage } = useVillage();
+  const { currentVillage, refreshVillage } = useVillage();
+  const { role } = useAuth();
+  const queryClient = useQueryClient();
+
   const [showComplaints, setShowComplaints] = useState(true);
   const [showBusinesses, setShowBusinesses] = useState(true);
+
+  // Admin pin editing state
+  const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
+  const [editingPin, setEditingPin] = useState(false);
+  const [pendingLat, setPendingLat] = useState<number | null>(null);
+  const [pendingLng, setPendingLng] = useState<number | null>(null);
 
   const lat = Number(currentVillage?.latitude) || DEFAULT_LAT;
   const lng = Number(currentVillage?.longitude) || DEFAULT_LNG;
@@ -88,6 +121,46 @@ const MapPage: React.FC = () => {
     },
   });
 
+  const saveLocation = useMutation({
+    mutationFn: async ({ newLat, newLng }: { newLat: number | null; newLng: number | null }) => {
+      if (!currentVillage) return;
+      const { error } = await supabase
+        .from('villages')
+        .update({ latitude: newLat, longitude: newLng })
+        .eq('id', currentVillage.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await refreshVillage?.();
+      queryClient.invalidateQueries({ queryKey: ['villages'] });
+      toast.success('Village location saved!');
+      setEditingPin(false);
+      setPendingLat(null);
+      setPendingLng(null);
+    },
+    onError: () => toast.error('Failed to save location'),
+  });
+
+  const handleStartEdit = () => {
+    setPendingLat(currentVillage?.latitude ? Number(currentVillage.latitude) : null);
+    setPendingLng(currentVillage?.longitude ? Number(currentVillage.longitude) : null);
+    setEditingPin(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPin(false);
+    setPendingLat(null);
+    setPendingLng(null);
+  };
+
+  const handleRemovePin = () => {
+    saveLocation.mutate({ newLat: null, newLng: null });
+  };
+
+  const handleSavePin = () => {
+    saveLocation.mutate({ newLat: pendingLat, newLng: pendingLng });
+  };
+
   const isLoading = loadingComplaints || loadingBusinesses;
 
   const getScatterPos = (index: number, total: number, type: 'complaint' | 'business') => {
@@ -108,13 +181,16 @@ const MapPage: React.FC = () => {
     resolved: complaints.filter(c => c.status === 'resolved').length,
   };
 
+  // The displayed village pin position (pending if editing, otherwise saved)
+  const displayLat = editingPin ? (pendingLat ?? lat) : lat;
+  const displayLng = editingPin ? (pendingLng ?? lng) : lng;
+  const hasLocation = !!(currentVillage?.latitude && currentVillage?.longitude);
+
   return (
-    // This page is rendered inside AppLayout's <main> which is flex-col.
-    // We stretch to fill all available height using flex: 1 + min-h-0.
     <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
 
       {/* Header */}
-      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
+      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
         <div className="flex items-center gap-2">
           <MapPin size={20} className="text-primary" />
           <div>
@@ -126,7 +202,7 @@ const MapPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           {isLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
-          {currentVillage?.latitude && currentVillage?.longitude ? (
+          {hasLocation ? (
             <span className="text-[10px] text-success bg-success/10 border border-success/20 rounded-full px-2 py-0.5">
               📍 Location set
             </span>
@@ -135,11 +211,54 @@ const MapPage: React.FC = () => {
               📍 Approx. location
             </span>
           )}
+          {/* Admin pin controls */}
+          {isAdmin && !editingPin && (
+            <button
+              onClick={handleStartEdit}
+              className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 hover:bg-primary/20 transition-colors"
+              title="Move/remove village pin"
+            >
+              <Move size={10} /> Edit Pin
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Admin pin editing toolbar */}
+      {editingPin && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border-b border-primary/20 flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
+          <Move size={13} className="text-primary flex-shrink-0" />
+          <p className="text-xs text-primary font-medium flex-1">
+            {pendingLat ? 'Drag the pin or click map to move it' : 'Click on the map to place the village pin'}
+          </p>
+          {hasLocation && (
+            <button
+              onClick={handleRemovePin}
+              disabled={saveLocation.isPending}
+              className="flex items-center gap-1 text-[10px] text-destructive border border-destructive/30 rounded-full px-2 py-0.5 hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 size={10} /> Remove Pin
+            </button>
+          )}
+          <button
+            onClick={handleSavePin}
+            disabled={saveLocation.isPending || !pendingLat || !pendingLng}
+            className="flex items-center gap-1 text-[10px] bg-primary text-primary-foreground rounded-full px-2 py-0.5 hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {saveLocation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Save size={10} />}
+            Save
+          </button>
+          <button
+            onClick={handleCancelEdit}
+            className="flex items-center gap-1 text-[10px] text-muted-foreground border border-border rounded-full px-2 py-0.5 hover:bg-muted transition-colors"
+          >
+            <X size={10} /> Cancel
+          </button>
+        </div>
+      )}
+
       {/* Stats / Filter bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
           Village Centre
@@ -172,7 +291,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Map — grows to fill remaining space */}
-      <div className="flex-1 relative" style={{ minHeight: 0 }}>
+      <div className="flex-1" style={{ minHeight: 0, position: 'relative', zIndex: 0 }}>
         {!currentVillage ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <MapPin size={40} className="opacity-30" />
@@ -180,34 +299,60 @@ const MapPage: React.FC = () => {
           </div>
         ) : (
           <MapContainer
-            center={[lat, lng]}
+            center={[displayLat, displayLng]}
             zoom={14}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            style={{ width: '100%', height: '100%' }}
             zoomControl={true}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <RecenterMap lat={lat} lng={lng} />
+            <RecenterMap lat={displayLat} lng={displayLng} />
+
+            {/* Click handler active only when editing */}
+            {editingPin && (
+              <MapClickHandler onPick={(la, lo) => {
+                setPendingLat(la);
+                setPendingLng(lo);
+              }} />
+            )}
 
             {/* Village centre pin */}
-            <Marker position={[lat, lng]} icon={villageIcon}>
-              <Popup>
-                <div className="p-1">
-                  <p className="font-bold text-sm">{currentVillage.name}</p>
-                  <p className="text-xs text-gray-500">{currentVillage.district}, {currentVillage.state}</p>
-                  {currentVillage.population && (
-                    <p className="text-xs mt-1">👥 {currentVillage.population.toLocaleString()} residents</p>
-                  )}
-                  {currentVillage.latitude && currentVillage.longitude ? (
-                    <p className="text-xs text-green-600 mt-1">📍 Exact location</p>
-                  ) : (
-                    <p className="text-xs text-orange-500 mt-1">📍 Approximate location</p>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
+            {(editingPin ? (pendingLat && pendingLng) : true) && (
+              <Marker
+                position={[
+                  editingPin ? (pendingLat ?? displayLat) : displayLat,
+                  editingPin ? (pendingLng ?? displayLng) : displayLng,
+                ]}
+                icon={editingPin ? villageDraggableIcon : villageIcon}
+                draggable={editingPin}
+                eventHandlers={editingPin ? {
+                  dragend(e) {
+                    const pos = (e.target as L.Marker).getLatLng();
+                    setPendingLat(pos.lat);
+                    setPendingLng(pos.lng);
+                  }
+                } : {}}
+              >
+                <Popup>
+                  <div className="p-1">
+                    <p className="font-bold text-sm">{currentVillage.name}</p>
+                    <p className="text-xs text-gray-500">{currentVillage.district}, {currentVillage.state}</p>
+                    {currentVillage.population && (
+                      <p className="text-xs mt-1">👥 {currentVillage.population.toLocaleString()} residents</p>
+                    )}
+                    {editingPin ? (
+                      <p className="text-xs text-blue-600 mt-1">🖱️ Drag to move pin</p>
+                    ) : hasLocation ? (
+                      <p className="text-xs text-green-600 mt-1">📍 Exact location</p>
+                    ) : (
+                      <p className="text-xs text-orange-500 mt-1">📍 Approximate location</p>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            )}
 
             {/* Complaints */}
             {showComplaints && complaints.map((c, i) => {
@@ -269,7 +414,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0">
+      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
         <div className="flex items-center gap-4 overflow-x-auto">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legend</p>
           {[
@@ -277,7 +422,7 @@ const MapPage: React.FC = () => {
             { color: 'hsl(38,95%,50%)', label: 'Reported', emoji: '⚠️' },
             { color: 'hsl(210,80%,50%)', label: 'In Progress', emoji: '🔧' },
             { color: 'hsl(142,60%,42%)', label: 'Resolved', emoji: '✅' },
-            { color: 'hsl(280,60%,50%)', label: 'Business 📍Exact', emoji: '🏪' },
+            { color: 'hsl(280,60%,50%)', label: 'Business', emoji: '🏪' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1 whitespace-nowrap">
               <div className="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[8px]"

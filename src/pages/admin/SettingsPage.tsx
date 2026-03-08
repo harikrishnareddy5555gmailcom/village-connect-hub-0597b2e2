@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle } from 'lucide-react';
+import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Move, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,20 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const villagePinIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    background:hsl(142,70%,30%);border:3px solid white;border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);width:38px;height:38px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 12px rgba(0,0,0,0.4);cursor:grab;">
+    <span style="transform:rotate(45deg);font-size:16px;line-height:1;">🏘️</span>
+  </div>`,
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -42],
 });
 
 function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
@@ -49,9 +63,15 @@ const SettingsPage: React.FC = () => {
   const [population, setPopulation] = useState(String(currentVillage?.population ?? ''));
 
   // Location state
-  const [villageLat, setVillageLat] = useState(currentVillage?.latitude?.toString() ?? '');
-  const [villageLng, setVillageLng] = useState(currentVillage?.longitude?.toString() ?? '');
+  const [villageLat, setVillageLat] = useState<number | null>(
+    currentVillage?.latitude ? Number(currentVillage.latitude) : null
+  );
+  const [villageLng, setVillageLng] = useState<number | null>(
+    currentVillage?.longitude ? Number(currentVillage.longitude) : null
+  );
   const [mapKey, setMapKey] = useState(0);
+  const [latInput, setLatInput] = useState(currentVillage?.latitude?.toString() ?? '');
+  const [lngInput, setLngInput] = useState(currentVillage?.longitude?.toString() ?? '');
 
   useEffect(() => {
     if (currentVillage) {
@@ -60,28 +80,52 @@ const SettingsPage: React.FC = () => {
       setDistrict(currentVillage.district);
       setState(currentVillage.state);
       setPopulation(String(currentVillage.population ?? ''));
-      setVillageLat(currentVillage.latitude?.toString() ?? '');
-      setVillageLng(currentVillage.longitude?.toString() ?? '');
+      const la = currentVillage.latitude ? Number(currentVillage.latitude) : null;
+      const lo = currentVillage.longitude ? Number(currentVillage.longitude) : null;
+      setVillageLat(la);
+      setVillageLng(lo);
+      setLatInput(la?.toString() ?? '');
+      setLngInput(lo?.toString() ?? '');
       setMapKey(k => k + 1);
     }
   }, [currentVillage?.id]);
 
-  const pickedLat = villageLat ? parseFloat(villageLat) : null;
-  const pickedLng = villageLng ? parseFloat(villageLng) : null;
   const mapCenter: [number, number] = [
-    pickedLat ?? DEFAULT_LAT,
-    pickedLng ?? DEFAULT_LNG,
+    villageLat ?? DEFAULT_LAT,
+    villageLng ?? DEFAULT_LNG,
   ];
 
   const handleGeolocate = () => {
     if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
     navigator.geolocation.getCurrentPosition(
       pos => {
-        setVillageLat(pos.coords.latitude.toFixed(6));
-        setVillageLng(pos.coords.longitude.toFixed(6));
+        const la = parseFloat(pos.coords.latitude.toFixed(6));
+        const lo = parseFloat(pos.coords.longitude.toFixed(6));
+        setVillageLat(la);
+        setVillageLng(lo);
+        setLatInput(la.toString());
+        setLngInput(lo.toString());
+        setMapKey(k => k + 1);
       },
       () => toast.error('Could not get your location'),
     );
+  };
+
+  const handleManualInput = () => {
+    const la = parseFloat(latInput);
+    const lo = parseFloat(lngInput);
+    if (!isNaN(la) && !isNaN(lo)) {
+      setVillageLat(la);
+      setVillageLng(lo);
+      setMapKey(k => k + 1);
+    }
+  };
+
+  const handleRemovePin = () => {
+    setVillageLat(null);
+    setVillageLng(null);
+    setLatInput('');
+    setLngInput('');
   };
 
   const updateVillage = useMutation({
@@ -95,8 +139,8 @@ const SettingsPage: React.FC = () => {
           district,
           state,
           population: population ? parseInt(population) : null,
-          latitude: villageLat ? parseFloat(villageLat) : null,
-          longitude: villageLng ? parseFloat(villageLng) : null,
+          latitude: villageLat,
+          longitude: villageLng,
         })
         .eq('id', currentVillage.id);
       if (error) throw error;
@@ -114,17 +158,18 @@ const SettingsPage: React.FC = () => {
       if (!currentVillage) return;
       const { error } = await supabase
         .from('villages')
-        .update({
-          latitude: villageLat ? parseFloat(villageLat) : null,
-          longitude: villageLng ? parseFloat(villageLng) : null,
-        })
+        .update({ latitude: villageLat, longitude: villageLng })
         .eq('id', currentVillage.id);
       if (error) throw error;
     },
     onSuccess: async () => {
       await refreshVillage?.();
       queryClient.invalidateQueries({ queryKey: ['villages'] });
-      toast.success('Village location saved! It now shows accurately on the map.');
+      if (villageLat && villageLng) {
+        toast.success('Village location saved! It now shows accurately on the map.');
+      } else {
+        toast.success('Village pin removed.');
+      }
     },
     onError: () => toast.error('Failed to save location'),
   });
@@ -223,14 +268,14 @@ const SettingsPage: React.FC = () => {
             <MapPin size={16} className="text-primary" />
             <h2 className="font-semibold text-foreground">Village Location on Map</h2>
           </div>
-          {pickedLat && pickedLng && (
+          {villageLat && villageLng && (
             <span className="text-xs text-success flex items-center gap-1 bg-success/10 border border-success/20 rounded-full px-2 py-0.5">
               <CheckCircle size={11} /> Location set
             </span>
           )}
         </div>
         <p className="text-xs text-muted-foreground mb-4">
-          Set the exact location of your village — this pin will show on the Village Map for all residents and helps everyone find businesses and complaints accurately.
+          Set the exact location of your village — this pin will show on the Village Map for all residents. <strong>Click</strong> on the map to place, <strong>drag</strong> to move, or <strong>remove</strong> the pin.
         </p>
 
         {!isAdmin ? (
@@ -240,12 +285,13 @@ const SettingsPage: React.FC = () => {
         ) : (
           <>
             {/* Coordinate inputs + geolocate */}
-            <div className="flex items-end gap-3 mb-3">
+            <div className="flex items-end gap-2 mb-3">
               <div className="flex-1">
                 <Label className="text-xs text-muted-foreground">Latitude</Label>
                 <Input
-                  value={villageLat}
-                  onChange={e => setVillageLat(e.target.value)}
+                  value={latInput}
+                  onChange={e => setLatInput(e.target.value)}
+                  onBlur={handleManualInput}
                   placeholder="e.g. 14.4673"
                   className="mt-0.5 h-9 text-sm"
                 />
@@ -253,8 +299,9 @@ const SettingsPage: React.FC = () => {
               <div className="flex-1">
                 <Label className="text-xs text-muted-foreground">Longitude</Label>
                 <Input
-                  value={villageLng}
-                  onChange={e => setVillageLng(e.target.value)}
+                  value={lngInput}
+                  onChange={e => setLngInput(e.target.value)}
+                  onBlur={handleManualInput}
                   placeholder="e.g. 78.8242"
                   className="mt-0.5 h-9 text-sm"
                 />
@@ -262,47 +309,79 @@ const SettingsPage: React.FC = () => {
               <Button type="button" variant="outline" className="h-9 text-xs whitespace-nowrap" onClick={handleGeolocate}>
                 <Navigation size={12} className="mr-1" /> My Location
               </Button>
+              {(villageLat || villageLng) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 text-xs whitespace-nowrap text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={handleRemovePin}
+                >
+                  <Trash2 size={12} className="mr-1" /> Remove
+                </Button>
+              )}
             </div>
 
             {/* Map */}
-            <div className="rounded-xl overflow-hidden border border-border mb-3" style={{ height: 300, position: 'relative' }}>
+            <div className="rounded-xl overflow-hidden border border-border mb-3" style={{ height: 320, position: 'relative' }}>
               <MapContainer
                 key={mapKey}
                 center={mapCenter}
-                zoom={pickedLat ? 14 : 5}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                zoom={villageLat ? 14 : 5}
+                style={{ width: '100%', height: '100%' }}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapClickHandler onPick={(la, lo) => {
-                  setVillageLat(la.toFixed(6));
-                  setVillageLng(lo.toFixed(6));
+                  setVillageLat(la);
+                  setVillageLng(lo);
+                  setLatInput(la.toFixed(6));
+                  setLngInput(lo.toFixed(6));
                 }} />
-                {pickedLat && pickedLng && (
+                {villageLat && villageLng && (
                   <>
-                    <RecenterMap lat={pickedLat} lng={pickedLng} />
-                    <Marker position={[pickedLat, pickedLng]} />
+                    <RecenterMap lat={villageLat} lng={villageLng} />
+                    <Marker
+                      position={[villageLat, villageLng]}
+                      icon={villagePinIcon}
+                      draggable={true}
+                      eventHandlers={{
+                        dragend(e) {
+                          const pos = (e.target as L.Marker).getLatLng();
+                          setVillageLat(pos.lat);
+                          setVillageLng(pos.lng);
+                          setLatInput(pos.lat.toFixed(6));
+                          setLngInput(pos.lng.toFixed(6));
+                        }
+                      }}
+                    />
                   </>
                 )}
               </MapContainer>
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] bg-background/90 backdrop-blur-sm border border-border rounded-full px-3 py-1 text-xs text-muted-foreground pointer-events-none shadow">
-                {pickedLat && pickedLng
-                  ? `📍 ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`
-                  : '👆 Click anywhere on the map to set village location'}
+
+              {/* Hint overlay */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] bg-background/90 backdrop-blur-sm border border-border rounded-full px-3 py-1 text-xs text-muted-foreground pointer-events-none shadow whitespace-nowrap">
+                {villageLat && villageLng
+                  ? `📍 ${villageLat.toFixed(5)}, ${villageLng.toFixed(5)} — Drag pin to move`
+                  : '👆 Click anywhere on the map to place village pin'}
               </div>
             </div>
 
-            <Button
-              className="btn-primary-gradient w-full"
-              onClick={() => saveLocation.mutate()}
-              disabled={saveLocation.isPending || (!villageLat && !villageLng)}
-            >
-              {saveLocation.isPending
-                ? <><Loader2 size={14} className="mr-2 animate-spin" />Saving...</>
-                : <><MapPin size={14} className="mr-2" />Save Village Location</>}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                className="btn-primary-gradient flex-1"
+                onClick={() => saveLocation.mutate()}
+                disabled={saveLocation.isPending}
+              >
+                {saveLocation.isPending
+                  ? <><Loader2 size={14} className="mr-2 animate-spin" />Saving...</>
+                  : villageLat && villageLng
+                    ? <><MapPin size={14} className="mr-2" />Save Village Location</>
+                    : <><Trash2 size={14} className="mr-2" />Remove Village Pin</>
+                }
+              </Button>
+            </div>
           </>
         )}
       </div>
