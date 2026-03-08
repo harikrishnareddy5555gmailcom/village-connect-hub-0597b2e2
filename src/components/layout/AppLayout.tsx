@@ -4,7 +4,7 @@ import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
   LogOut, MapPin, BarChart3, Globe,
-  Menu, X
+  Menu, X, DollarSign
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
