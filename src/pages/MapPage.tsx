@@ -252,6 +252,15 @@ const MapPage: React.FC = () => {
               📍 Approx. location
             </span>
           )}
+          <button
+            onClick={handleNearMe}
+            disabled={nearMeLoading}
+            className="flex items-center gap-1 text-[10px] bg-primary text-primary-foreground rounded-full px-2 py-0.5 hover:bg-primary/90 transition-colors disabled:opacity-60"
+            title="Center map to my current location"
+          >
+            {nearMeLoading ? <Loader2 size={10} className="animate-spin" /> : <Navigation size={10} />}
+            Near Me
+          </button>
           {isAdmin && !editingPin && (
             <button
               onClick={handleStartEdit}
