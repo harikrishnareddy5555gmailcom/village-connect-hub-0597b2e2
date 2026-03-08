@@ -123,7 +123,7 @@ const MapPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
@@ -178,7 +178,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-0">
         {!currentVillage ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <MapPin size={40} className="opacity-30" />
