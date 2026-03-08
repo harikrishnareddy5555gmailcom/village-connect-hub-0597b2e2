@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       setProfile(profileData);
-      setRole((roleData?.role as AppRole) ?? null);
+      setRole(roleData ? (roleData.role as AppRole) : null);
     } catch {
       setProfile(null);
       setRole(null);
