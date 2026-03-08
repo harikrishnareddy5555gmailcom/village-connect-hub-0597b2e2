@@ -205,8 +205,8 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           <NotificationsBell />
         </header>
 
-        {/* Page Content — fills remaining height; children manage their own scroll */}
-        <main className="flex-1 min-h-0 overflow-auto">
+        {/* Page Content — flex-1 + min-h-0 so children that need full height (e.g. MapPage) work correctly */}
+        <main className="flex-1 min-h-0" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {children}
         </main>
       </div>
