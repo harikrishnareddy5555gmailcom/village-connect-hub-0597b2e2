@@ -205,11 +205,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           <NotificationsBell />
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 min-h-0 overflow-hidden">
-          <div className="h-full overflow-y-auto">
-            {children}
-          </div>
+        {/* Page Content — fills remaining height; children manage their own scroll */}
+        <main className="flex-1 min-h-0 overflow-auto">
+          {children}
         </main>
       </div>
     </div>
