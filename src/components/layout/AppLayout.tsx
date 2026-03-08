@@ -222,6 +222,26 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           >
             <Menu size={22} />
           </button>
+          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-7 h-7 rounded-lg object-contain" />
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-foreground leading-tight">వరదయపల్లి</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">Varadayapalli</p>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="text-foreground/70 hover:text-foreground p-1"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <NotificationsBell />
+        </header>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-foreground/70 hover:text-foreground"
+          >
+            <Menu size={22} />
+          </button>
           <img src={villageConnectLogo} alt="" className="w-7 h-7" />
           <span className="font-bold text-sm text-foreground flex-1">Village Connect</span>
           <button
