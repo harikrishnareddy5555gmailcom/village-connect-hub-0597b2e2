@@ -69,10 +69,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
               <p className="text-xs text-sidebar-foreground/70 truncate">{currentVillage.name}</p>
             )}
           </div>
-          {mobile && (
+          {mobile ? (
             <button onClick={onClose} className="ml-auto text-sidebar-foreground/70 hover:text-sidebar-foreground">
               <X size={18} />
             </button>
+          ) : (
+            <div className="ml-auto">
+              <NotificationsBell />
+            </div>
           )}
         </div>
       </div>
