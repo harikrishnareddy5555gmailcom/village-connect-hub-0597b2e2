@@ -181,67 +181,16 @@ const ProjectsPage: React.FC = () => {
             const statusCfg = STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG];
             const prog = p.progress ?? progressMap[p.status] ?? 0;
             return (
-              <div key={p.id} className="vcp-card p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h4 className="font-semibold text-foreground">{p.title}</h4>
-                    {p.profiles?.full_name && (
-                      <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                        <Users size={11} />By {p.profiles.full_name}
-                      </p>
-                    )}
-                  </div>
-                  <span className={`border rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${statusCfg?.color}`}>
-                    {statusCfg?.label}
-                  </span>
-                </div>
-
-                {p.description && <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{p.description}</p>}
-
-                {/* Progress */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Progress</span><span>{prog}%</span>
-                  </div>
-                  <Progress value={prog} className="h-2" />
-                </div>
-
-                <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                  {p.budget && (
-                    <span className="flex items-center gap-1">
-                      <IndianRupee size={11} className="text-primary" />
-                      {parseFloat(p.budget).toLocaleString('en-IN')} budget
-                    </span>
-                  )}
-                  {p.start_date && (
-                    <span className="flex items-center gap-1">
-                      <Calendar size={11} />
-                      {format(new Date(p.start_date), 'dd MMM yyyy')}
-                      {p.end_date && ` → ${format(new Date(p.end_date), 'dd MMM yyyy')}`}
-                    </span>
-                  )}
-                </div>
-
-                {isAdmin && (
-                  <div className="flex gap-2 mt-3 flex-wrap">
-                    {(['planned', 'in_progress', 'completed', 'delayed'] as const).map(s => (
-                      <button
-                        key={s}
-                        onClick={() => updateProjectStatus.mutate({ id: p.id, status: s, progress: progressMap[s] })}
-                        disabled={p.status === s}
-                        className={cn(
-                          'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
-                          p.status === s
-                            ? STATUS_CONFIG[s].color + ' cursor-default'
-                            : 'border-border text-muted-foreground hover:border-primary/50'
-                        )}
-                      >
-                        {STATUS_CONFIG[s].label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ProjectCard
+                key={p.id}
+                project={p}
+                statusCfg={statusCfg}
+                prog={prog}
+                isAdmin={isAdmin}
+                onStatusChange={(status, progress) =>
+                  updateProjectStatus.mutate({ id: p.id, status, progress })
+                }
+              />
             );
           })}
         </div>
