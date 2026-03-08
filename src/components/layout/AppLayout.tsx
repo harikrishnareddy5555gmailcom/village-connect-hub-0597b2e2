@@ -150,7 +150,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
       </nav>
 
       {/* User Profile Footer */}
-      <div className="px-3 py-4 border-t border-sidebar-border">
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-sm font-medium"
+        >
+          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide opacity-50">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </span>
+        </button>
+
         {profile && (
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors">
             <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm flex-shrink-0">
