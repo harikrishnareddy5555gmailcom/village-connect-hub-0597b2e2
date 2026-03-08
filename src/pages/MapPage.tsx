@@ -368,6 +368,38 @@ const MapPage: React.FC = () => {
                 </Popup>
               </Marker>
             ))}
+
+            {/* Complaints — only those with real GPS coordinates */}
+            {showComplaints && mappedComplaints.map((c: any) => (
+              <Marker
+                key={c.id}
+                position={[Number(c.latitude), Number(c.longitude)]}
+                icon={complaintIcon(c.status)}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[160px]">
+                    <p className="font-semibold text-sm leading-tight mb-1">{c.title}</p>
+                    <p className="text-xs text-gray-500 mb-1">📂 {c.category}</p>
+                    {c.location_tag && <p className="text-xs text-gray-500 mb-1">📍 {c.location_tag}</p>}
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${
+                      c.status === 'resolved' ? 'bg-green-50 text-green-700 border-green-200' :
+                      c.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      'bg-yellow-50 text-yellow-700 border-yellow-200'
+                    }`}>
+                      {c.status.replace('_', ' ')}
+                    </span>
+                    <a
+                      href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline mt-1 block"
+                    >
+                      View on Google Maps
+                    </a>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         )}
       </div>
@@ -378,6 +410,9 @@ const MapPage: React.FC = () => {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legend</p>
           {[
             { color: 'hsl(142,70%,30%)', label: 'Village', emoji: '🏘️' },
+            { color: 'hsl(38,95%,50%)', label: 'Reported', emoji: '⚠️' },
+            { color: 'hsl(210,80%,50%)', label: 'In Progress', emoji: '🔧' },
+            { color: 'hsl(142,60%,42%)', label: 'Resolved', emoji: '✅' },
             { color: 'hsl(280,60%,50%)', label: 'Business', emoji: '🏪' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1 whitespace-nowrap">
@@ -388,11 +423,6 @@ const MapPage: React.FC = () => {
               <span className="text-[10px] text-muted-foreground">{item.label}</span>
             </div>
           ))}
-          {mappedBusinesses.length === 0 && (
-            <p className="text-[10px] text-muted-foreground ml-2">
-              No businesses with saved locations yet. Business owners can pin their location when listing.
-            </p>
-          )}
         </div>
       </div>
     </div>
@@ -400,3 +430,4 @@ const MapPage: React.FC = () => {
 };
 
 export default MapPage;
+
