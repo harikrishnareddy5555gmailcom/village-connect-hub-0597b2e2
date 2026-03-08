@@ -320,7 +320,7 @@ const ProjectsPage: React.FC = () => {
     queryFn: async () => {
       let q = (supabase as any)
         .from('projects')
-        .select('*, profiles(full_name)')
+        .select('*, profiles!projects_created_by_profiles_fkey(full_name)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
       if (filterStatus !== 'all') q = q.eq('status', filterStatus);
