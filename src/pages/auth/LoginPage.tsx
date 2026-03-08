@@ -96,6 +96,15 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <Button type="submit" className="w-full btn-primary-gradient" disabled={loading}>
               {loading ? (
                 <><Loader2 size={16} className="mr-2 animate-spin" />Signing In...</>
