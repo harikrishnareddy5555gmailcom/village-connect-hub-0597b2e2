@@ -87,18 +87,18 @@ const App = () => (
 
               {/* Protected Routes */}
               <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
-              <Route path="/discussions" element={<ProtectedRoute><ComingSoon title="Discussions" emoji="💬" /></ProtectedRoute>} />
-              <Route path="/events" element={<ProtectedRoute><ComingSoon title="Events" emoji="📅" /></ProtectedRoute>} />
-              <Route path="/complaints" element={<ProtectedRoute><ComingSoon title="Complaints" emoji="⚠️" /></ProtectedRoute>} />
-              <Route path="/businesses" element={<ProtectedRoute><ComingSoon title="Business Directory" emoji="🏪" /></ProtectedRoute>} />
-              <Route path="/projects" element={<ProtectedRoute><ComingSoon title="Village Projects" emoji="🏗️" /></ProtectedRoute>} />
+              <Route path="/discussions" element={<ProtectedRoute><DiscussionsPage /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+              <Route path="/complaints" element={<ProtectedRoute><ComplaintsPage /></ProtectedRoute>} />
+              <Route path="/businesses" element={<ProtectedRoute><BusinessDirectoryPage /></ProtectedRoute>} />
+              <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
               <Route path="/map" element={<ProtectedRoute><ComingSoon title="Village Map" emoji="🗺️" /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><ComingSoon title="My Profile" emoji="👤" /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
               {/* Admin Routes */}
               <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/users" element={<ProtectedRoute adminOnly><ComingSoon title="User Management" emoji="👥" /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute adminOnly><ComingSoon title="Settings" emoji="⚙️" /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserManagementPage /></ProtectedRoute>} />
+              <Route path="/admin/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
