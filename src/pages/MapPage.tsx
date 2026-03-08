@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useVillage } from '@/contexts/VillageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, Building2, AlertTriangle, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info } from 'lucide-react';
+import { MapPin, Building2, AlertTriangle, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
