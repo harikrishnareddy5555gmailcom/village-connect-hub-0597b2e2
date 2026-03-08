@@ -101,6 +101,22 @@ const MapPage: React.FC = () => {
     },
   });
 
+  const { data: complaints = [], isLoading: loadingComplaints } = useQuery({
+    queryKey: ['map-complaints', currentVillage?.id],
+    enabled: !!currentVillage,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('complaints')
+        .select('id, title, category, status, location_tag, latitude, longitude')
+        .eq('village_id', currentVillage!.id)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .limit(200);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const saveLocation = useMutation({
     mutationFn: async ({ newLat, newLng }: { newLat: number | null; newLng: number | null }) => {
       if (!currentVillage) return;
