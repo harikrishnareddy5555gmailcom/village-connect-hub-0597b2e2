@@ -112,7 +112,7 @@ function AppRoutes() {
         <Route path="/complaints" element={<ComplaintsPage />} />
         <Route path="/businesses" element={<BusinessDirectoryPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/map" element={<ComingSoon title="Village Map" emoji="🗺️" />} />
+        <Route path="/map" element={<MapPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
