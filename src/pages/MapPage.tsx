@@ -75,6 +75,7 @@ const MapPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [showBusinesses, setShowBusinesses] = useState(true);
+  const [showComplaints, setShowComplaints] = useState(true);
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
   const [editingPin, setEditingPin] = useState(false);
