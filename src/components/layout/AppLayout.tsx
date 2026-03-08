@@ -9,7 +9,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import villageConnectLogo from '@/assets/village-connect-logo.png';
+import varadayapalliLogo from '@/assets/varadayapalli-logo.png';
 import { cn } from '@/lib/utils';
 import NotificationsBell from '@/components/NotificationsBell';
 
