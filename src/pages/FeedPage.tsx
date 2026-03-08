@@ -402,7 +402,7 @@ const FeedPage: React.FC = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_author_id_fkey(full_name, avatar_url, occupation)
+          profiles(full_name, avatar_url, occupation)
         `)
         .eq('village_id', currentVillage!.id)
         .eq('is_deleted', false)
