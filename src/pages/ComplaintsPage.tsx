@@ -86,11 +86,12 @@ const ComplaintsPage: React.FC = () => {
     queryFn: async () => {
       let q = (supabase as any)
         .from('complaints')
-        .select('*, profiles(full_name, mobile_number)')
+        .select('*, profiles!complaints_reporter_id_fkey(full_name, mobile_number)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
       if (filterStatus !== 'all') q = q.eq('status', filterStatus);
-      const { data } = await q;
+      const { data, error } = await q;
+      if (error) throw error;
       return data ?? [];
     },
   });
