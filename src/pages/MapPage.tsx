@@ -66,6 +66,26 @@ function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => voi
   return null;
 }
 
+function FlyToUser({ lat, lng, trigger }: { lat: number; lng: number; trigger: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (trigger > 0) map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+  }, [trigger, lat, lng, map]);
+  return null;
+}
+
+const userLocationIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    background:hsl(210,80%,50%);border:3px solid white;border-radius:50%;
+    width:18px;height:18px;
+    box-shadow:0 0 0 5px hsla(210,80%,50%,0.25),0 2px 8px rgba(0,0,0,0.3);">
+  </div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+  popupAnchor: [0, -12],
+});
+
 const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
 
