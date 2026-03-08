@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useVillage } from '@/contexts/VillageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, AlertTriangle, Building2, Loader2, Eye, EyeOff, Move, Trash2, Save, X } from 'lucide-react';
+import { MapPin, Building2, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -50,16 +50,7 @@ const createDraggableIcon = (color: string, emoji: string) =>
 
 const villageIcon = createIcon('hsl(142,70%,30%)', '🏘️');
 const villageDraggableIcon = createDraggableIcon('hsl(142,70%,30%)', '🏘️');
-const complaintReportedIcon = createIcon('hsl(38,95%,50%)', '⚠️');
-const complaintResolvedIcon = createIcon('hsl(142,60%,42%)', '✅');
-const complaintProgressIcon = createIcon('hsl(210,80%,50%)', '🔧');
 const businessIcon = createIcon('hsl(280,60%,50%)', '🏪');
-
-const STATUS_COLORS: Record<string, string> = {
-  reported: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  in_progress: 'bg-blue-100 text-blue-800 border-blue-200',
-  resolved: 'bg-green-100 text-green-800 border-green-200',
-};
 
 function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
@@ -67,7 +58,6 @@ function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
-// Click handler for placing new village pin
 function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({ click(e) { onPick(e.latlng.lat, e.latlng.lng); } });
   return null;
@@ -81,10 +71,8 @@ const MapPage: React.FC = () => {
   const { role } = useAuth();
   const queryClient = useQueryClient();
 
-  const [showComplaints, setShowComplaints] = useState(true);
   const [showBusinesses, setShowBusinesses] = useState(true);
 
-  // Admin pin editing state
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
   const [editingPin, setEditingPin] = useState(false);
   const [pendingLat, setPendingLat] = useState<number | null>(null);
@@ -92,20 +80,6 @@ const MapPage: React.FC = () => {
 
   const lat = Number(currentVillage?.latitude) || DEFAULT_LAT;
   const lng = Number(currentVillage?.longitude) || DEFAULT_LNG;
-
-  const { data: complaints = [], isLoading: loadingComplaints } = useQuery({
-    queryKey: ['map-complaints', currentVillage?.id],
-    enabled: !!currentVillage,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('complaints')
-        .select('id, title, category, status, location_tag, created_at')
-        .eq('village_id', currentVillage!.id)
-        .limit(100);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
 
   const { data: businesses = [], isLoading: loadingBusinesses } = useQuery({
     queryKey: ['map-businesses', currentVillage?.id],
@@ -115,7 +89,9 @@ const MapPage: React.FC = () => {
         .from('businesses')
         .select('id, name, category, address, phone, is_verified, latitude, longitude')
         .eq('village_id', currentVillage!.id)
-        .limit(100);
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .limit(200);
       if (error) throw error;
       return data ?? [];
     },
@@ -161,36 +137,19 @@ const MapPage: React.FC = () => {
     saveLocation.mutate({ newLat: pendingLat, newLng: pendingLng });
   };
 
-  const isLoading = loadingComplaints || loadingBusinesses;
+  const isLoading = loadingBusinesses;
 
-  const getScatterPos = (index: number, total: number, type: 'complaint' | 'business') => {
-    const radius = 0.008 + (index % 3) * 0.003;
-    const angle = (index / Math.max(total, 1)) * 2 * Math.PI + (type === 'business' ? Math.PI / 4 : 0);
-    return { lat: lat + radius * Math.cos(angle), lng: lng + radius * Math.sin(angle) };
-  };
-
-  const complaintIcon = (status: string) => {
-    if (status === 'resolved') return complaintResolvedIcon;
-    if (status === 'in_progress') return complaintProgressIcon;
-    return complaintReportedIcon;
-  };
-
-  const stats = {
-    complaints: complaints.length,
-    businesses: businesses.length,
-    resolved: complaints.filter(c => c.status === 'resolved').length,
-  };
-
-  // The displayed village pin position (pending if editing, otherwise saved)
   const displayLat = editingPin ? (pendingLat ?? lat) : lat;
   const displayLng = editingPin ? (pendingLng ?? lng) : lng;
   const hasLocation = !!(currentVillage?.latitude && currentVillage?.longitude);
+
+  const mappedBusinesses = businesses.filter(b => b.latitude && b.longitude);
 
   return (
     <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
 
       {/* Header */}
-      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
+      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0" style={{ position: 'relative', zIndex: 10 }}>
         <div className="flex items-center gap-2">
           <MapPin size={20} className="text-primary" />
           <div>
@@ -203,7 +162,7 @@ const MapPage: React.FC = () => {
         <div className="flex items-center gap-2">
           {isLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
           {hasLocation ? (
-            <span className="text-[10px] text-success bg-success/10 border border-success/20 rounded-full px-2 py-0.5">
+            <span className="text-[10px] text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
               📍 Location set
             </span>
           ) : (
@@ -211,7 +170,6 @@ const MapPage: React.FC = () => {
               📍 Approx. location
             </span>
           )}
-          {/* Admin pin controls */}
           {isAdmin && !editingPin && (
             <button
               onClick={handleStartEdit}
@@ -226,7 +184,7 @@ const MapPage: React.FC = () => {
 
       {/* Admin pin editing toolbar */}
       {editingPin && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border-b border-primary/20 flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border-b border-primary/20 flex-shrink-0" style={{ position: 'relative', zIndex: 10 }}>
           <Move size={13} className="text-primary flex-shrink-0" />
           <p className="text-xs text-primary font-medium flex-1">
             {pendingLat ? 'Drag the pin or click map to move it' : 'Click on the map to place the village pin'}
@@ -237,7 +195,7 @@ const MapPage: React.FC = () => {
               disabled={saveLocation.isPending}
               className="flex items-center gap-1 text-[10px] text-destructive border border-destructive/30 rounded-full px-2 py-0.5 hover:bg-destructive/10 transition-colors"
             >
-              <Trash2 size={10} /> Remove Pin
+              <Trash2 size={10} /> Remove
             </button>
           )}
           <button
@@ -257,23 +215,13 @@ const MapPage: React.FC = () => {
         </div>
       )}
 
-      {/* Stats / Filter bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0" style={{ position: 'relative', zIndex: 10 }}>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
           Village Centre
         </div>
         <div className="w-px h-3 bg-border" />
-        <button
-          onClick={() => setShowComplaints(v => !v)}
-          className={cn(
-            "flex items-center gap-1.5 text-xs whitespace-nowrap px-2 py-1 rounded-full border transition-colors",
-            showComplaints ? "bg-yellow-50 text-yellow-800 border-yellow-200" : "text-muted-foreground border-transparent"
-          )}
-        >
-          {showComplaints ? <Eye size={11} /> : <EyeOff size={11} />}
-          <AlertTriangle size={11} className="ml-0.5" /> {stats.complaints} Complaints
-        </button>
         <button
           onClick={() => setShowBusinesses(v => !v)}
           className={cn(
@@ -282,15 +230,15 @@ const MapPage: React.FC = () => {
           )}
         >
           {showBusinesses ? <Eye size={11} /> : <EyeOff size={11} />}
-          <Building2 size={11} className="ml-0.5" /> {stats.businesses} Businesses
+          <Building2 size={11} className="ml-0.5" /> {mappedBusinesses.length} Businesses
         </button>
-        <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
-          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-          {stats.resolved} resolved
+        <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+          <Info size={10} />
+          Only pinned locations shown
         </div>
       </div>
 
-      {/* Map — grows to fill remaining space */}
+      {/* Map */}
       <div className="flex-1" style={{ minHeight: 0, position: 'relative', zIndex: 0 }}>
         {!currentVillage ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
@@ -310,7 +258,6 @@ const MapPage: React.FC = () => {
             />
             <RecenterMap lat={displayLat} lng={displayLng} />
 
-            {/* Click handler active only when editing */}
             {editingPin && (
               <MapClickHandler onPick={(la, lo) => {
                 setPendingLat(la);
@@ -318,7 +265,7 @@ const MapPage: React.FC = () => {
               }} />
             )}
 
-            {/* Village centre pin */}
+            {/* Village centre pin — always visible */}
             {(editingPin ? (pendingLat && pendingLng) : true) && (
               <Marker
                 position={[
@@ -354,74 +301,44 @@ const MapPage: React.FC = () => {
               </Marker>
             )}
 
-            {/* Complaints */}
-            {showComplaints && complaints.map((c, i) => {
-              const pos = getScatterPos(i, complaints.length, 'complaint');
-              return (
-                <Marker key={c.id} position={[pos.lat, pos.lng]} icon={complaintIcon(c.status)}>
-                  <Popup>
-                    <div className="p-1 min-w-[160px]">
-                      <p className="font-semibold text-sm leading-tight mb-1">{c.title}</p>
-                      <p className="text-xs text-gray-500 mb-1">📂 {c.category}</p>
-                      {c.location_tag && <p className="text-xs text-gray-500 mb-1">📍 {c.location_tag}</p>}
-                      <span className={cn(
-                        "inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border",
-                        STATUS_COLORS[c.status] ?? 'bg-gray-100 text-gray-700'
-                      )}>
-                        {c.status.replace('_', ' ')}
-                      </span>
+            {/* Businesses — only those with real GPS coordinates */}
+            {showBusinesses && mappedBusinesses.map((b) => (
+              <Marker
+                key={b.id}
+                position={[Number(b.latitude), Number(b.longitude)]}
+                icon={businessIcon}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[160px]">
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="font-semibold text-sm">{b.name}</p>
+                      {b.is_verified && <span className="text-green-600 text-xs">✓</span>}
                     </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-
-            {/* Businesses — exact coords if available, else scatter */}
-            {showBusinesses && (businesses as any[]).map((b: any, i) => {
-              const hasExact = b.latitude && b.longitude;
-              const pos = hasExact
-                ? { lat: Number(b.latitude), lng: Number(b.longitude) }
-                : getScatterPos(i, businesses.length, 'business');
-              return (
-                <Marker key={b.id} position={[pos.lat, pos.lng]} icon={businessIcon}>
-                  <Popup>
-                    <div className="p-1 min-w-[160px]">
-                      <div className="flex items-center gap-1 mb-1">
-                        <p className="font-semibold text-sm">{b.name}</p>
-                        {b.is_verified && <span className="text-green-600 text-xs">✓</span>}
-                        {hasExact && <span className="text-blue-500 text-xs ml-1" title="Exact location">📍</span>}
-                      </div>
-                      <p className="text-xs text-gray-500 mb-1">🏷️ {b.category}</p>
-                      {b.address && <p className="text-xs text-gray-500 mb-1">📍 {b.address}</p>}
-                      {b.phone && <p className="text-xs text-gray-500">📞 {b.phone}</p>}
-                      {hasExact && (
-                        <a
-                          href={`https://www.google.com/maps?q=${b.latitude},${b.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 underline mt-1 block"
-                        >
-                          Open in Google Maps
-                        </a>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
+                    <p className="text-xs text-gray-500 mb-1">🏷️ {b.category}</p>
+                    {b.address && <p className="text-xs text-gray-500 mb-1">📍 {b.address}</p>}
+                    {b.phone && <p className="text-xs text-gray-500 mb-1">📞 {b.phone}</p>}
+                    <a
+                      href={`https://www.google.com/maps?q=${b.latitude},${b.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline mt-1 block"
+                    >
+                      Open in Google Maps
+                    </a>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         )}
       </div>
 
       {/* Legend */}
-      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0" style={{ zIndex: 10, position: 'relative' }}>
+      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0" style={{ position: 'relative', zIndex: 10 }}>
         <div className="flex items-center gap-4 overflow-x-auto">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legend</p>
           {[
             { color: 'hsl(142,70%,30%)', label: 'Village', emoji: '🏘️' },
-            { color: 'hsl(38,95%,50%)', label: 'Reported', emoji: '⚠️' },
-            { color: 'hsl(210,80%,50%)', label: 'In Progress', emoji: '🔧' },
-            { color: 'hsl(142,60%,42%)', label: 'Resolved', emoji: '✅' },
             { color: 'hsl(280,60%,50%)', label: 'Business', emoji: '🏪' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1 whitespace-nowrap">
@@ -432,6 +349,11 @@ const MapPage: React.FC = () => {
               <span className="text-[10px] text-muted-foreground">{item.label}</span>
             </div>
           ))}
+          {mappedBusinesses.length === 0 && (
+            <p className="text-[10px] text-muted-foreground ml-2">
+              No businesses with saved locations yet. Business owners can pin their location when listing.
+            </p>
+          )}
         </div>
       </div>
     </div>
