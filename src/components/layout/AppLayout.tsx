@@ -1,15 +1,16 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Home, Users, Bell, Settings, MessageSquare,
+  Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
-  Shield, LogOut, ChevronDown, MapPin, BarChart3,
+  LogOut, MapPin, BarChart3,
   Menu, X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import villageConnectLogo from '@/assets/village-connect-logo.png';
 import { cn } from '@/lib/utils';
+import NotificationsBell from '@/components/NotificationsBell';
 
 interface NavItem {
   to: string;
