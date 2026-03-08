@@ -127,6 +127,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/donations" element={<DonationsPage />} />
+        <Route path="/members" element={<MembersPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
