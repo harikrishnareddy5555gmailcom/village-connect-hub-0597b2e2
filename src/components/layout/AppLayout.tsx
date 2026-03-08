@@ -172,6 +172,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const location = useLocation();
+
+  // Map page needs overflow-hidden so the map can fill the exact remaining height
+  const isMapPage = location.pathname === '/map';
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -193,7 +197,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Top Bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="text-foreground/70 hover:text-foreground"
@@ -206,7 +210,10 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 min-h-0 overflow-y-auto relative">
+        <main className={cn(
+          "flex-1 min-h-0",
+          isMapPage ? "overflow-hidden flex flex-col" : "overflow-y-auto"
+        )}>
           {children}
         </main>
       </div>

@@ -16,7 +16,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Custom colored icons
 const createIcon = (color: string, emoji: string) =>
   L.divIcon({
     className: '',
@@ -109,12 +108,13 @@ const MapPage: React.FC = () => {
     resolved: complaints.filter(c => c.status === 'resolved').length,
   };
 
-  // The map container uses inset-0 absolute to fill the relative parent in AppLayout
   return (
-    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    // This page is rendered inside AppLayout's <main> which is flex-col.
+    // We stretch to fill all available height using flex: 1 + min-h-0.
+    <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
 
       {/* Header */}
-      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0 z-10 relative">
+      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <MapPin size={20} className="text-primary" />
           <div>
@@ -124,14 +124,25 @@ const MapPage: React.FC = () => {
             )}
           </div>
         </div>
-        {isLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+        <div className="flex items-center gap-2">
+          {isLoading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+          {currentVillage?.latitude && currentVillage?.longitude ? (
+            <span className="text-[10px] text-success bg-success/10 border border-success/20 rounded-full px-2 py-0.5">
+              📍 Location set
+            </span>
+          ) : (
+            <span className="text-[10px] text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5">
+              📍 Approx. location
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Stats/filter bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0 z-10 relative">
+      {/* Stats / Filter bar */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-          Village
+          Village Centre
         </div>
         <div className="w-px h-3 bg-border" />
         <button
@@ -160,8 +171,8 @@ const MapPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Map — takes all remaining height */}
-      <div className="flex-1 relative" style={{ minHeight: 0, zIndex: 0 }}>
+      {/* Map — grows to fill remaining space */}
+      <div className="flex-1 relative" style={{ minHeight: 0 }}>
         {!currentVillage ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <MapPin size={40} className="opacity-30" />
@@ -180,7 +191,7 @@ const MapPage: React.FC = () => {
             />
             <RecenterMap lat={lat} lng={lng} />
 
-            {/* Village center */}
+            {/* Village centre pin */}
             <Marker position={[lat, lng]} icon={villageIcon}>
               <Popup>
                 <div className="p-1">
@@ -188,6 +199,11 @@ const MapPage: React.FC = () => {
                   <p className="text-xs text-gray-500">{currentVillage.district}, {currentVillage.state}</p>
                   {currentVillage.population && (
                     <p className="text-xs mt-1">👥 {currentVillage.population.toLocaleString()} residents</p>
+                  )}
+                  {currentVillage.latitude && currentVillage.longitude ? (
+                    <p className="text-xs text-green-600 mt-1">📍 Exact location</p>
+                  ) : (
+                    <p className="text-xs text-orange-500 mt-1">📍 Approximate location</p>
                   )}
                 </div>
               </Popup>
@@ -215,8 +231,8 @@ const MapPage: React.FC = () => {
               );
             })}
 
-            {/* Businesses — use exact coords if available, else scatter */}
-            {showBusinesses && businesses.map((b: any, i) => {
+            {/* Businesses — exact coords if available, else scatter */}
+            {showBusinesses && (businesses as any[]).map((b: any, i) => {
               const hasExact = b.latitude && b.longitude;
               const pos = hasExact
                 ? { lat: Number(b.latitude), lng: Number(b.longitude) }
@@ -233,6 +249,16 @@ const MapPage: React.FC = () => {
                       <p className="text-xs text-gray-500 mb-1">🏷️ {b.category}</p>
                       {b.address && <p className="text-xs text-gray-500 mb-1">📍 {b.address}</p>}
                       {b.phone && <p className="text-xs text-gray-500">📞 {b.phone}</p>}
+                      {hasExact && (
+                        <a
+                          href={`https://www.google.com/maps?q=${b.latitude},${b.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 underline mt-1 block"
+                        >
+                          Open in Google Maps
+                        </a>
+                      )}
                     </div>
                   </Popup>
                 </Marker>
@@ -243,7 +269,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0 z-10 relative">
+      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0">
         <div className="flex items-center gap-4 overflow-x-auto">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legend</p>
           {[
@@ -251,7 +277,7 @@ const MapPage: React.FC = () => {
             { color: 'hsl(38,95%,50%)', label: 'Reported', emoji: '⚠️' },
             { color: 'hsl(210,80%,50%)', label: 'In Progress', emoji: '🔧' },
             { color: 'hsl(142,60%,42%)', label: 'Resolved', emoji: '✅' },
-            { color: 'hsl(280,60%,50%)', label: 'Business', emoji: '🏪' },
+            { color: 'hsl(280,60%,50%)', label: 'Business 📍Exact', emoji: '🏪' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1 whitespace-nowrap">
               <div className="w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[8px]"
