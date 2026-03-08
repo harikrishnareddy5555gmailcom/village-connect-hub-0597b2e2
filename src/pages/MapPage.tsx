@@ -123,7 +123,7 @@ const MapPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 0px)' }}>
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">

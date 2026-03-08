@@ -168,7 +168,7 @@ const CreatePost: React.FC = () => {
 };
 
 // ---- Post Card Component ----
-const PostCard: React.FC<{ post: PostWithAuthor }> = ({ post }) => {
+const PostCard: React.FC<{ post: PostWithAuthor }> = React.memo(({ post }) => {
   const { user, role } = useAuth();
   const queryClient = useQueryClient();
   const [showComments, setShowComments] = useState(false);
