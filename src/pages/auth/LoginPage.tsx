@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import villageConnectLogo from '@/assets/village-connect-logo.png';
+import varadayapalliLogo from '@/assets/varadayapalli-logo.png';
 import { toast } from 'sonner';
 
 const LoginPage: React.FC = () => {
@@ -44,8 +44,9 @@ const LoginPage: React.FC = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src={villageConnectLogo} alt="Village Connect" className="w-20 h-20 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-foreground">Village Connect</h1>
+          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
+          <h1 className="text-3xl font-bold text-foreground">వరదయపల్లి</h1>
+          <p className="text-base text-muted-foreground font-medium">Varadayapalli</p>
           <p className="text-muted-foreground mt-1 text-sm">గ్రాముల కోసం ఒక వేదిక</p>
         </div>
 

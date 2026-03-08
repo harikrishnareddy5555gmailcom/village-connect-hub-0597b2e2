@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import villageConnectLogo from '@/assets/village-connect-logo.png';
+import varadayapalliLogo from '@/assets/varadayapalli-logo.png';
 import { toast } from 'sonner';
 
 const RegisterPage: React.FC = () => {
@@ -48,8 +48,9 @@ const RegisterPage: React.FC = () => {
     <div className="min-h-screen flex bg-background">
       {/* Left Panel - Decorative */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-hero flex-col items-center justify-center p-12 text-white">
-        <img src={villageConnectLogo} alt="Village Connect" className="w-28 h-28 mb-8 drop-shadow-xl" />
-        <h1 className="text-4xl font-bold mb-4 text-center">Village Connect</h1>
+        <img src={varadayapalliLogo} alt="Varadayapalli" className="w-28 h-28 mb-6 drop-shadow-xl object-contain" />
+        <h1 className="text-4xl font-bold mb-1 text-center">వరదయపల్లి</h1>
+        <p className="text-xl text-white/90 text-center font-medium mb-4">Varadayapalli</p>
         <p className="text-lg text-white/80 text-center leading-relaxed mb-8">
           గ్రామమును కలుపు · Connecting Villages
         </p>
@@ -68,7 +69,12 @@ const RegisterPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Mobile header */}
           <div className="lg:hidden text-center mb-8">
-            <img src={villageConnectLogo} alt="" className="w-16 h-16 mx-auto mb-3" />
+            <img src={varadayapalliLogo} alt="Varadayapalli" className="w-16 h-16 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-bold text-foreground">వరదయపల్లి</h1>
+            <p className="text-sm text-muted-foreground">Varadayapalli</p>
+          </div>
+          <div className="lg:hidden text-center mb-8">
+            <img src={varadayapalliLogo} alt="Varadayapalli" className="w-16 h-16 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Village Connect</h1>
           </div>
 
