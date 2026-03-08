@@ -51,6 +51,9 @@ const createDraggableIcon = (color: string, emoji: string) =>
 const villageIcon = createIcon('hsl(142,70%,30%)', '🏘️');
 const villageDraggableIcon = createDraggableIcon('hsl(142,70%,30%)', '🏘️');
 const businessIcon = createIcon('hsl(280,60%,50%)', '🏪');
+const complaintReportedIcon = createIcon('hsl(38,95%,50%)', '⚠️');
+const complaintProgressIcon = createIcon('hsl(210,80%,50%)', '🔧');
+const complaintResolvedIcon = createIcon('hsl(142,60%,42%)', '✅');
 
 function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
