@@ -132,7 +132,9 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          latitude: number | null
           location_tag: string | null
+          longitude: number | null
           reporter_id: string
           status: string
           title: string
@@ -145,7 +147,9 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          latitude?: number | null
           location_tag?: string | null
+          longitude?: number | null
           reporter_id: string
           status?: string
           title: string
@@ -158,7 +162,9 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          latitude?: number | null
           location_tag?: string | null
+          longitude?: number | null
           reporter_id?: string
           status?: string
           title?: string
