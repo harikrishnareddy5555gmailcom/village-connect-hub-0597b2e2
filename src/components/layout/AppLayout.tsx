@@ -216,6 +216,60 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Top Bar */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm flex-shrink-0" style={{ position: 'relative', zIndex: 20 }}>
+          <button onClick={() => setSidebarOpen(true)} className="text-foreground/70 hover:text-foreground">
+            <Menu size={22} />
+          </button>
+          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-7 h-7 rounded-lg object-contain" />
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-foreground leading-tight">వరదయపల్లి</p>
+            <p className="text-[10px] text-muted-foreground leading-tight">Varadayapalli</p>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="text-foreground/70 hover:text-foreground p-1"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <NotificationsBell />
+        </header>
+
+        {/* Page Content */}
+        <main className={cn(
+          "flex-1 min-h-0",
+          isMapPage ? "overflow-hidden flex flex-col" : "overflow-y-auto"
+        )} style={{ position: 'relative', zIndex: 1 }}>
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+  // Map page needs overflow-hidden so the map can fill the exact remaining height
+  const isMapPage = location.pathname === '/map';
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex w-60 flex-shrink-0 flex-col">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-64 flex-shrink-0 animate-slide-in-left">
+            <Sidebar mobile onClose={() => setSidebarOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile Top Bar */}
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm flex-shrink-0" style={{ position: 'relative', zIndex: 20 }}>
           <button
             onClick={() => setSidebarOpen(true)}
             className="text-foreground/70 hover:text-foreground"
