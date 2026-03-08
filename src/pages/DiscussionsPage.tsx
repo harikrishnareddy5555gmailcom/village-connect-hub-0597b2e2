@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const DiscussionsPage: React.FC = () => {
+const DiscussionsPage = React.forwardRef<HTMLDivElement>((_, ref) => {
   const { user } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
