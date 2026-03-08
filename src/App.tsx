@@ -27,6 +27,17 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
 
+// ---- Helper components defined BEFORE they are used ----
+
+const ComingSoon: React.FC<{ title: string; emoji: string }> = ({ title, emoji }) => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+    <div className="text-6xl mb-4">{emoji}</div>
+    <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
+    <p className="text-muted-foreground">This section is coming soon!</p>
+    <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
+  </div>
+);
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, profile, role, loading } = useAuth();
 
@@ -69,31 +80,7 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-const ComingSoon: React.FC<{ title: string; emoji: string }> = ({ title, emoji }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-    <div className="text-6xl mb-4">{emoji}</div>
-    <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
-    <p className="text-muted-foreground">This section is coming soon!</p>
-    <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
-  </div>
-);
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner richColors position="top-right" />
-      <BrowserRouter>
-        <AuthProvider>
-          <VillageProvider>
-            <AppRoutes />
-          </VillageProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
+// ---- AppRoutes defined BEFORE App ----
 const AppRoutes = () => (
   <Routes>
     {/* Public Routes */}
@@ -119,6 +106,23 @@ const AppRoutes = () => (
 
     <Route path="*" element={<NotFound />} />
   </Routes>
+);
+
+// ---- App: providers wrap the router ----
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner richColors position="top-right" />
+      <BrowserRouter>
+        <AuthProvider>
+          <VillageProvider>
+            <AppRoutes />
+          </VillageProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;
