@@ -251,6 +251,16 @@ const MapPage: React.FC = () => {
         </div>
         <div className="w-px h-3 bg-border" />
         <button
+          onClick={() => setShowComplaints(v => !v)}
+          className={cn(
+            "flex items-center gap-1.5 text-xs whitespace-nowrap px-2 py-1 rounded-full border transition-colors",
+            showComplaints ? "bg-yellow-50 text-yellow-800 border-yellow-200" : "text-muted-foreground border-transparent"
+          )}
+        >
+          {showComplaints ? <Eye size={11} /> : <EyeOff size={11} />}
+          <AlertTriangle size={11} className="ml-0.5" /> {mappedComplaints.length} Complaints
+        </button>
+        <button
           onClick={() => setShowBusinesses(v => !v)}
           className={cn(
             "flex items-center gap-1.5 text-xs whitespace-nowrap px-2 py-1 rounded-full border transition-colors",
@@ -265,6 +275,7 @@ const MapPage: React.FC = () => {
           Only pinned locations shown
         </div>
       </div>
+
 
       {/* Map */}
       <div className="flex-1" style={{ minHeight: 0, position: 'relative', zIndex: 0 }}>
