@@ -3,21 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import villageConnectLogo from '@/assets/village-connect-logo.png';
-
-const PendingApprovalPage: React.FC = () => {
-  const { signOut, profile } = useAuth();
-  const navigate = useNavigate();
-
-  const handleBack = async () => {
-    await signOut();
-    navigate('/login', { replace: true });
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md text-center">
-        <img src={villageConnectLogo} alt="" className="w-20 h-20 mx-auto mb-6" />
+import varadayapalliLogo from '@/assets/varadayapalli-logo.png';
+...
+        <img src={varadayapalliLogo} alt="Varadayapalli" className="w-20 h-20 mx-auto mb-6 drop-shadow-md" />
 
         <div className="vcp-card p-8">
           <div className="w-16 h-16 mx-auto mb-4 bg-warning/15 rounded-full flex items-center justify-center">

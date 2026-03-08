@@ -69,9 +69,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
       {/* Header */}
       <div className="px-4 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <img src={villageConnectLogo} alt="Village Connect" className="w-10 h-10 rounded-xl" />
+          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-10 h-10 rounded-xl object-contain" />
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm leading-tight text-sidebar-foreground truncate">Village Connect</p>
+            <p className="font-bold text-sm leading-tight text-sidebar-foreground truncate">వరదయపల్లి</p>
+            <p className="text-[10px] text-sidebar-foreground/70 truncate">Varadayapalli</p>
             {currentVillage && (
               <p className="text-xs text-sidebar-foreground/70 truncate">{currentVillage.name}</p>
             )}
