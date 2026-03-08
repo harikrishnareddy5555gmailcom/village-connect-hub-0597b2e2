@@ -44,14 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: rolesData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .returns<Array<{ role: AppRole }>>();
 
       setProfile(profileData);
+      const roleOrder: Record<AppRole, number> = { super_admin: 1, admin: 2, moderator: 3, user: 4 };
       const topRole = rolesData && rolesData.length > 0
-        ? (rolesData.sort((a, b) => {
-            const order = { super_admin: 1, admin: 2, moderator: 3, user: 4 };
-            return (order[a.role as keyof typeof order] ?? 99) - (order[b.role as keyof typeof order] ?? 99);
-          })[0].role as AppRole)
+        ? rolesData.sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99))[0].role
         : null;
       setRole(topRole);
     } catch {
