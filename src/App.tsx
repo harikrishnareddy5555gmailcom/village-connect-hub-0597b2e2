@@ -21,6 +21,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import NotFound from "@/pages/NotFound";
+import MapPage from "@/pages/MapPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
