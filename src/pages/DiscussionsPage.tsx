@@ -30,7 +30,7 @@ const DiscussionsPage: React.FC = () => {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('discussions')
-        .select('*, profiles(full_name, avatar_url), discussion_replies(id)')
+        .select('*, profiles!discussions_author_id_profiles_fkey(full_name, avatar_url), discussion_replies(id)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
       return data ?? [];
