@@ -413,12 +413,12 @@ const FeedPage: React.FC = () => {
 
       // Check which posts the user has liked
       if (user && data) {
-        const { data: userLikes } = await supabase
+        const { data: userLikes } = await (supabase as any)
           .from('likes')
           .select('post_id')
           .eq('user_id', user.id);
-        const likedIds = new Set(userLikes?.map(l => l.post_id) ?? []);
-        return data.map(p => ({ ...p, liked_by_user: likedIds.has(p.id) }));
+        const likedIds = new Set((userLikes as Array<{ post_id: string }> | null)?.map(l => l.post_id) ?? []);
+        return (data as any[]).map(p => ({ ...p, liked_by_user: likedIds.has(p.id) }));
       }
 
       return data ?? [];
