@@ -241,13 +241,23 @@ const BusinessDirectoryPage: React.FC = () => {
                 {pickedLat && pickedLng && (
                   <>
                     <RecenterMap lat={pickedLat} lng={pickedLng} />
-                    <Marker position={[pickedLat, pickedLng]} />
+                    <Marker
+                      position={[pickedLat, pickedLng]}
+                      draggable={true}
+                      eventHandlers={{
+                        dragend(e) {
+                          const pos = (e.target as L.Marker).getLatLng();
+                          setBizLat(pos.lat.toFixed(6));
+                          setBizLng(pos.lng.toFixed(6));
+                        }
+                      }}
+                    />
                   </>
                 )}
               </MapContainer>
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[500] bg-background/90 backdrop-blur-sm border border-border rounded-full px-3 py-1 text-xs text-muted-foreground pointer-events-none shadow">
                 {pickedLat && pickedLng
-                  ? `📍 ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`
+                  ? `📍 Drag pin to fine-tune · ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`
                   : '👆 Click map to pin your shop location'}
               </div>
             </div>
