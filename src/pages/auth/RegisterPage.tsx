@@ -48,8 +48,9 @@ const RegisterPage: React.FC = () => {
     <div className="min-h-screen flex bg-background">
       {/* Left Panel - Decorative */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-hero flex-col items-center justify-center p-12 text-white">
-        <img src={villageConnectLogo} alt="Village Connect" className="w-28 h-28 mb-8 drop-shadow-xl" />
-        <h1 className="text-4xl font-bold mb-4 text-center">Village Connect</h1>
+        <img src={varadayapalliLogo} alt="Varadayapalli" className="w-28 h-28 mb-6 drop-shadow-xl object-contain" />
+        <h1 className="text-4xl font-bold mb-1 text-center">వరదయపల్లి</h1>
+        <p className="text-xl text-white/90 text-center font-medium mb-4">Varadayapalli</p>
         <p className="text-lg text-white/80 text-center leading-relaxed mb-8">
           గ్రామమును కలుపు · Connecting Villages
         </p>
