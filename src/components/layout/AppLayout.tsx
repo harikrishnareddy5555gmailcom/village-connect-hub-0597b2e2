@@ -192,7 +192,8 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <Menu size={22} />
           </button>
           <img src={villageConnectLogo} alt="" className="w-7 h-7" />
-          <span className="font-bold text-sm text-foreground">Village Connect</span>
+          <span className="font-bold text-sm text-foreground flex-1">Village Connect</span>
+          <NotificationsBell />
         </header>
 
         {/* Page Content */}
