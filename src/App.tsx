@@ -27,6 +27,7 @@ import TeamsPage from "@/pages/TeamsPage";
 import VillageManagementPage from "@/pages/admin/VillageManagementPage";
 import DonationsPage from "@/pages/DonationsPage";
 import MembersPage from "@/pages/MembersPage";
+import VillageStatsPage from "@/pages/VillageStatsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
