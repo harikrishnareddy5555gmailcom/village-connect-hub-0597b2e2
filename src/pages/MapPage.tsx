@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useVillage } from '@/contexts/VillageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, Building2, AlertTriangle, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info } from 'lucide-react';
+import { MapPin, Building2, AlertTriangle, Loader2, Eye, EyeOff, Move, Trash2, Save, X, Info, Navigation } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -66,6 +66,26 @@ function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => voi
   return null;
 }
 
+function FlyToUser({ lat, lng, trigger }: { lat: number; lng: number; trigger: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (trigger > 0) map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+  }, [trigger, lat, lng, map]);
+  return null;
+}
+
+const userLocationIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    background:hsl(210,80%,50%);border:3px solid white;border-radius:50%;
+    width:18px;height:18px;
+    box-shadow:0 0 0 5px hsla(210,80%,50%,0.25),0 2px 8px rgba(0,0,0,0.3);">
+  </div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+  popupAnchor: [0, -12],
+});
+
 const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
 
@@ -82,6 +102,37 @@ const MapPage: React.FC = () => {
   const [editingPin, setEditingPin] = useState(false);
   const [pendingLat, setPendingLat] = useState<number | null>(null);
   const [pendingLng, setPendingLng] = useState<number | null>(null);
+
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
+  const [flyTrigger, setFlyTrigger] = useState(0);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setNearMeLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLat(pos.coords.latitude);
+        setUserLng(pos.coords.longitude);
+        setFlyTrigger(t => t + 1);
+        setNearMeLoading(false);
+        toast.success('Showing your current location');
+      },
+      (err) => {
+        setNearMeLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          toast.error('Location permission denied. Please allow location access.');
+        } else {
+          toast.error('Unable to retrieve your location');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const lat = Number(currentVillage?.latitude) || DEFAULT_LAT;
   const lng = Number(currentVillage?.longitude) || DEFAULT_LNG;
@@ -201,6 +252,15 @@ const MapPage: React.FC = () => {
               📍 Approx. location
             </span>
           )}
+          <button
+            onClick={handleNearMe}
+            disabled={nearMeLoading}
+            className="flex items-center gap-1 text-[10px] bg-primary text-primary-foreground rounded-full px-2 py-0.5 hover:bg-primary/90 transition-colors disabled:opacity-60"
+            title="Center map to my current location"
+          >
+            {nearMeLoading ? <Loader2 size={10} className="animate-spin" /> : <Navigation size={10} />}
+            Near Me
+          </button>
           {isAdmin && !editingPin && (
             <button
               onClick={handleStartEdit}
@@ -322,6 +382,9 @@ const MapPage: React.FC = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <RecenterMap lat={displayLat} lng={displayLng} />
+            {userLat && userLng && (
+              <FlyToUser lat={userLat} lng={userLng} trigger={flyTrigger} />
+            )}
 
             {editingPin && (
               <MapClickHandler onPick={(la, lo) => {
@@ -361,6 +424,18 @@ const MapPage: React.FC = () => {
                     ) : (
                       <p className="text-xs text-orange-500 mt-1">📍 Approximate location</p>
                     )}
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* User's current location marker */}
+            {userLat && userLng && (
+              <Marker position={[userLat, userLng]} icon={userLocationIcon}>
+                <Popup>
+                  <div className="p-1">
+                    <p className="font-semibold text-sm">📍 You are here</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{userLat.toFixed(5)}, {userLng.toFixed(5)}</p>
                   </div>
                 </Popup>
               </Marker>
