@@ -123,9 +123,9 @@ const MapPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col" style={{ height: '100%', overflow: 'hidden' }}>
       {/* Header */}
-      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between flex-shrink-0">
+      <div className="px-4 py-3 bg-card border-b border-border flex items-center justify-between" style={{ flexShrink: 0 }}>
         <div className="flex items-center gap-2">
           <MapPin size={20} className="text-primary" />
           <div>
@@ -141,7 +141,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Stats bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto flex-shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2 bg-card border-b border-border overflow-x-auto" style={{ flexShrink: 0 }}>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
           <span className="w-2 h-2 rounded-full bg-primary inline-block" />
           Village
@@ -177,8 +177,8 @@ const MapPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Map */}
-      <div className="flex-1 relative min-h-0" style={{ minHeight: '300px' }}>
+      {/* Map — takes all remaining height */}
+      <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         {!currentVillage ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <MapPin size={40} className="opacity-30" />
@@ -188,7 +188,7 @@ const MapPage: React.FC = () => {
           <MapContainer
             center={[lat, lng]}
             zoom={14}
-            style={{ width: '100%', height: '100%', minHeight: '300px', position: 'absolute', inset: 0 }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -257,7 +257,7 @@ const MapPage: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="px-4 py-2 bg-card border-t border-border flex-shrink-0">
+      <div className="px-4 py-2 bg-card border-t border-border" style={{ flexShrink: 0 }}>
         <div className="flex items-center gap-4 overflow-x-auto">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Legend</p>
           {[
