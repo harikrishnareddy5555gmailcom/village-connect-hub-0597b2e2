@@ -319,6 +319,83 @@ export type Database = {
           },
         ]
       }
+      donations: {
+        Row: {
+          added_by: string
+          amount: number
+          created_at: string
+          currency: string
+          date: string
+          donor_id: string | null
+          donor_name: string
+          id: string
+          is_anonymous: boolean
+          notes: string | null
+          project_id: string | null
+          updated_at: string
+          village_id: string
+        }
+        Insert: {
+          added_by: string
+          amount: number
+          created_at?: string
+          currency?: string
+          date?: string
+          donor_id?: string | null
+          donor_name: string
+          id?: string
+          is_anonymous?: boolean
+          notes?: string | null
+          project_id?: string | null
+          updated_at?: string
+          village_id: string
+        }
+        Update: {
+          added_by?: string
+          amount?: number
+          created_at?: string
+          currency?: string
+          date?: string
+          donor_id?: string | null
+          donor_name?: string
+          id?: string
+          is_anonymous?: boolean
+          notes?: string | null
+          project_id?: string | null
+          updated_at?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "donations_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "donations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -370,6 +447,198 @@ export type Database = {
           },
           {
             foreignKeyName: "events_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          currency: string
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          project_id: string | null
+          proof_url: string | null
+          responsible_admin: string
+          updated_at: string
+          village_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          currency?: string
+          date?: string
+          description: string
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          proof_url?: string | null
+          responsible_admin: string
+          updated_at?: string
+          village_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          currency?: string
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          project_id?: string | null
+          proof_url?: string | null
+          responsible_admin?: string
+          updated_at?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_responsible_admin_fkey"
+            columns: ["responsible_admin"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fund_audit_log: {
+        Row: {
+          action: string
+          changed_by: string
+          created_at: string
+          edit_request_id: string | null
+          id: string
+          new_data: Json | null
+          previous_data: Json | null
+          record_id: string
+          record_type: string
+          village_id: string
+        }
+        Insert: {
+          action: string
+          changed_by: string
+          created_at?: string
+          edit_request_id?: string | null
+          id?: string
+          new_data?: Json | null
+          previous_data?: Json | null
+          record_id: string
+          record_type: string
+          village_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          created_at?: string
+          edit_request_id?: string | null
+          id?: string
+          new_data?: Json | null
+          previous_data?: Json | null
+          record_id?: string
+          record_type?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fund_audit_log_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fund_audit_log_edit_request_id_fkey"
+            columns: ["edit_request_id"]
+            isOneToOne: false
+            referencedRelation: "fund_edit_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fund_audit_log_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fund_edit_requests: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string
+          record_id: string
+          record_type: string
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          village_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason: string
+          record_id: string
+          record_type: string
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          village_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string
+          record_id?: string
+          record_type?: string
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fund_edit_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fund_edit_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fund_edit_requests_village_id_fkey"
             columns: ["village_id"]
             isOneToOne: false
             referencedRelation: "villages"
@@ -931,6 +1200,7 @@ export type Database = {
           created_at: string
           description: string | null
           district: string
+          donations_enabled: boolean
           id: string
           is_active: boolean
           latitude: number | null
@@ -948,6 +1218,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           district: string
+          donations_enabled?: boolean
           id?: string
           is_active?: boolean
           latitude?: number | null
@@ -965,6 +1236,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           district?: string
+          donations_enabled?: boolean
           id?: string
           is_active?: boolean
           latitude?: number | null

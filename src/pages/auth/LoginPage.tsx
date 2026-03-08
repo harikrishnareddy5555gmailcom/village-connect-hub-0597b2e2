@@ -20,15 +20,12 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     const { error } = await signIn(mobile, password);
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error('Invalid mobile number or password');
-    } else {
-      // Profile check happens in AuthContext - redirect based on status
-      setTimeout(() => {
-        navigate('/feed');
-      }, 300);
     }
+    // On success: AuthContext will fire onAuthStateChange → GuestGuard will redirect automatically.
+    // Do NOT call navigate() here — it races with AuthContext loading state.
   };
 
   return (

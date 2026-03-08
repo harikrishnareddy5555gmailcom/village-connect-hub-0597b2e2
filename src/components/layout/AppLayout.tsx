@@ -4,7 +4,7 @@ import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
   LogOut, MapPin, BarChart3, Globe,
-  Menu, X
+  Menu, X, DollarSign
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { to: '/projects', icon: <Briefcase size={18} />, label: 'Projects', labelTe: 'ప్రాజెక్టులు' },
   { to: '/teams', icon: <Users size={18} />, label: 'Teams', labelTe: 'బృందాలు' },
   { to: '/map', icon: <MapPin size={18} />, label: 'Village Map', labelTe: 'గ్రామ పటం' },
+  { to: '/donations', icon: <DollarSign size={18} />, label: 'Donations', labelTe: 'విరాళాలు' },
   { to: '/profile', icon: <Users size={18} />, label: 'My Profile', labelTe: 'నా ప్రొఫైల్' },
 ];
 

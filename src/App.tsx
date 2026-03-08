@@ -24,6 +24,7 @@ import NotFound from "@/pages/NotFound";
 import MapPage from "@/pages/MapPage";
 import TeamsPage from "@/pages/TeamsPage";
 import VillageManagementPage from "@/pages/admin/VillageManagementPage";
+import DonationsPage from "@/pages/DonationsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -124,6 +125,7 @@ function AppRoutes() {
         <Route path="/map" element={<MapPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/teams" element={<TeamsPage />} />
+        <Route path="/donations" element={<DonationsPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
