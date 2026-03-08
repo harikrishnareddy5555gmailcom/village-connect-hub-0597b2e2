@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import {
   AlertTriangle, Plus, X, Loader2, CheckCircle2, Clock, Circle,
-  MapPin, ChevronDown, ChevronUp
+  MapPin, ChevronDown, ChevronUp, Navigation, Map
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -19,6 +18,36 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet icons
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const pinIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    background:hsl(0,80%,50%);border:2px solid white;border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);width:28px;height:28px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.35);">
+    <span style="transform:rotate(45deg);font-size:12px;">⚠️</span>
+  </div>`,
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+  popupAnchor: [0, -32],
+});
+
+function MapPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({ click(e) { onPick(e.latlng.lat, e.latlng.lng); } });
+  return null;
+}
 
 const STATUS_CONFIG = {
   reported: { label: 'Reported', color: 'bg-warning/15 text-yellow-700 border-warning/30', icon: <Circle size={12} /> },
@@ -27,6 +56,9 @@ const STATUS_CONFIG = {
 };
 
 const CATEGORIES = ['Road', 'Water Supply', 'Electricity', 'Sanitation', 'Street Light', 'Drainage', 'Tree/Vegetation', 'Other'];
+
+const DEFAULT_LAT = 17.385;
+const DEFAULT_LNG = 78.4867;
 
 const ComplaintsPage: React.FC = () => {
   const { user, profile, role } = useAuth();
@@ -39,8 +71,14 @@ const ComplaintsPage: React.FC = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [pinLat, setPinLat] = useState<number | null>(null);
+  const [pinLng, setPinLng] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  const mapCenterLat = currentVillage?.latitude ? Number(currentVillage.latitude) : DEFAULT_LAT;
+  const mapCenterLng = currentVillage?.longitude ? Number(currentVillage.longitude) : DEFAULT_LNG;
 
   const { data: complaints = [], isLoading } = useQuery({
     queryKey: ['complaints', currentVillage?.id, filterStatus],
@@ -57,6 +95,12 @@ const ComplaintsPage: React.FC = () => {
     },
   });
 
+  const resetForm = () => {
+    setShowForm(false);
+    setTitle(''); setDescription(''); setCategory(''); setLocation('');
+    setPinLat(null); setPinLng(null); setShowMapPicker(false);
+  };
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!title.trim() || !description.trim()) throw new Error('Fill all required fields');
@@ -67,12 +111,14 @@ const ComplaintsPage: React.FC = () => {
         description,
         category: category || 'Other',
         location_tag: location || null,
+        latitude: pinLat,
+        longitude: pinLng,
         status: 'reported',
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      setShowForm(false); setTitle(''); setDescription(''); setCategory(''); setLocation('');
+      resetForm();
       queryClient.invalidateQueries({ queryKey: ['complaints'] });
       toast.success('Complaint submitted!');
     },
@@ -90,6 +136,19 @@ const ComplaintsPage: React.FC = () => {
     },
   });
 
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) return toast.error('Geolocation not supported');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setPinLat(pos.coords.latitude);
+        setPinLng(pos.coords.longitude);
+        setShowMapPicker(true);
+        toast.success('Location detected!');
+      },
+      () => toast.error('Could not get your location')
+    );
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {/* Header */}
@@ -103,7 +162,7 @@ const ComplaintsPage: React.FC = () => {
             <p className="text-xs text-muted-foreground">Report issues to your village admin</p>
           </div>
         </div>
-        <Button size="sm" className="btn-primary-gradient" onClick={() => setShowForm(!showForm)}>
+        <Button size="sm" className="btn-primary-gradient" onClick={() => { if (showForm) resetForm(); else setShowForm(true); }}>
           {showForm ? <X size={14} className="mr-1" /> : <Plus size={14} className="mr-1" />}
           {showForm ? 'Cancel' : 'New Complaint'}
         </Button>
@@ -129,13 +188,78 @@ const ComplaintsPage: React.FC = () => {
                 </Select>
               </div>
               <div>
-                <Label className="text-sm">Location (optional)</Label>
+                <Label className="text-sm">Location name (optional)</Label>
                 <div className="relative mt-1">
                   <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Street / Area" className="pl-8" />
+                  <Input value={location} onChange={e => setLocation(e.target.value)} placeholder="Street / Area name" className="pl-8" />
                 </div>
               </div>
             </div>
+
+            {/* Map pin section */}
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                    <Map size={14} className="text-primary" />
+                    Pin exact location on map
+                    <span className="text-[10px] text-muted-foreground font-normal bg-muted px-1.5 py-0.5 rounded-full">optional</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {pinLat ? `📍 Pinned at ${pinLat.toFixed(5)}, ${pinLng?.toFixed(5)}` : 'Help admins find the exact spot'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleUseMyLocation}
+                    className="flex items-center gap-1 text-xs text-primary border border-primary/30 rounded-full px-2 py-1 hover:bg-primary/10 transition-colors"
+                  >
+                    <Navigation size={11} /> My Location
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowMapPicker(v => !v)}
+                    className="flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-1 hover:bg-primary/20 transition-colors"
+                  >
+                    <Map size={11} /> {showMapPicker ? 'Hide Map' : 'Pick on Map'}
+                  </button>
+                  {pinLat && (
+                    <button
+                      type="button"
+                      onClick={() => { setPinLat(null); setPinLng(null); }}
+                      className="flex items-center gap-1 text-xs text-destructive border border-destructive/30 rounded-full px-2 py-1 hover:bg-destructive/10 transition-colors"
+                    >
+                      <X size={11} /> Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {showMapPicker && (
+                <div className="rounded-lg overflow-hidden border border-border" style={{ height: 220 }}>
+                  <MapContainer
+                    center={[pinLat ?? mapCenterLat, pinLng ?? mapCenterLng]}
+                    zoom={15}
+                    style={{ width: '100%', height: '100%' }}
+                    zoomControl={true}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <MapPicker onPick={(la, lo) => { setPinLat(la); setPinLng(lo); }} />
+                    {pinLat && pinLng && (
+                      <Marker position={[pinLat, pinLng]} icon={pinIcon} />
+                    )}
+                  </MapContainer>
+                </div>
+              )}
+              {showMapPicker && !pinLat && (
+                <p className="text-xs text-muted-foreground text-center">👆 Tap anywhere on the map to drop a pin</p>
+              )}
+            </div>
+
             <div>
               <Label className="text-sm">Description *</Label>
               <Textarea
@@ -186,6 +310,7 @@ const ComplaintsPage: React.FC = () => {
           {complaints.map((c: any) => {
             const statusCfg = STATUS_CONFIG[c.status as keyof typeof STATUS_CONFIG];
             const isExpanded = expanded === c.id;
+            const hasPin = !!(c.latitude && c.longitude);
             return (
               <div key={c.id} className="vcp-card p-4">
                 <div className="flex items-start gap-3">
@@ -202,6 +327,16 @@ const ComplaintsPage: React.FC = () => {
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <MapPin size={10} />{c.location_tag}
                             </span>
+                          )}
+                          {hasPin && (
+                            <a
+                              href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary flex items-center gap-1 hover:underline"
+                            >
+                              <MapPin size={10} /> View on map
+                            </a>
                           )}
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
