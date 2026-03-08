@@ -6,7 +6,7 @@ import {
   Image, Video, Send, Pin, Megaphone, Trash2, Flag,
   Loader2, Plus, X
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import { Button } from '@/components/ui/button';

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { Database } from '@/lib/types';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 type Village = Database['public']['Tables']['villages']['Row'];
 
