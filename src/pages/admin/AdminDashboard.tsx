@@ -79,7 +79,7 @@ const AdminDashboard: React.FC = () => {
 
   const rejectUser = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('profiles')
         .update({ status: 'banned' })
         .eq('user_id', userId);
