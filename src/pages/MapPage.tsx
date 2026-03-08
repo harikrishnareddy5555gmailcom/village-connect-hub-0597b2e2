@@ -76,6 +76,7 @@ const MapPage: React.FC = () => {
 
   const [showBusinesses, setShowBusinesses] = useState(true);
   const [showComplaints, setShowComplaints] = useState(true);
+  const [complaintStatusFilter, setComplaintStatusFilter] = useState<'all' | 'reported' | 'in_progress' | 'resolved'>('all');
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
   const [editingPin, setEditingPin] = useState(false);
