@@ -436,7 +436,19 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = React.memo(({ post }) => {
             <span className="font-medium">{post.comments_count}</span>
           </button>
 
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors ml-auto">
+          <button
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors ml-auto"
+            onClick={async () => {
+              const text = `${post.profiles?.full_name ?? 'Someone'} posted: ${post.content.slice(0, 120)}${post.content.length > 120 ? '…' : ''}`;
+              if (navigator.share) {
+                try { await navigator.share({ title: 'Village Connect', text }); } catch {}
+              } else {
+                await navigator.clipboard.writeText(text);
+                toast.success('Copied to clipboard!');
+              }
+            }}
+            title="Share post"
+          >
             <Share2 size={16} />
           </button>
         </div>

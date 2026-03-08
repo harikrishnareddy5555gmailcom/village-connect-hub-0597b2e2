@@ -29,11 +29,13 @@ const UserManagementPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ['all-users', filterStatus],
+    queryKey: ['all-users', filterStatus, currentVillage?.id],
+    enabled: !!currentVillage,
     queryFn: async () => {
       let q = (supabase as any)
         .from('profiles')
         .select('*, user_roles(role)')
+        .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
       if (filterStatus !== 'all') q = q.eq('status', filterStatus);
       const { data } = await q;
