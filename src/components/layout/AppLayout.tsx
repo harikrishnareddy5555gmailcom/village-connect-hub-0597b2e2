@@ -122,7 +122,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
                 Admin
               </p>
             </div>
-            {adminNavItems.map((item) => (
+            {adminNavItems
+              .filter(item => !item.superAdminOnly || role === 'super_admin')
+              .map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
