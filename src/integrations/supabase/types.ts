@@ -22,6 +22,8 @@ export type Database = {
           description: string | null
           id: string
           is_verified: boolean
+          latitude: number | null
+          longitude: number | null
           name: string
           owner_id: string
           owner_name: string | null
@@ -36,6 +38,8 @@ export type Database = {
           description?: string | null
           id?: string
           is_verified?: boolean
+          latitude?: number | null
+          longitude?: number | null
           name: string
           owner_id: string
           owner_name?: string | null
@@ -50,6 +54,8 @@ export type Database = {
           description?: string | null
           id?: string
           is_verified?: boolean
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           owner_id?: string
           owner_name?: string | null
