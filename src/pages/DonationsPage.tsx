@@ -168,18 +168,15 @@ const DonationsPage: React.FC = () => {
 
   const addDonationMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const { data: row, error } = await supabase
-        .from('donations')
-        .insert({ ...data, village_id: villageId, added_by: profile!.user_id })
-        .select()
-        .single();
+      const payload = { ...data, village_id: villageId!, added_by: profile!.user_id };
+      const { data: row, error } = await supabase.from('donations').insert([payload as Parameters<typeof supabase.from<'donations'>>[0] extends unknown ? never : never] as never).select().single();
       if (error) throw error;
-      // Audit
-      await supabase.from('fund_audit_log').insert({
-        village_id: villageId!, record_type: 'donation', record_id: row.id,
-        action: 'create', changed_by: profile!.user_id, new_data: row,
-      });
-      return row;
+      const insertedRow = row as { id: string };
+      await supabase.from('fund_audit_log').insert([{
+        village_id: villageId!, record_type: 'donation', record_id: insertedRow.id,
+        action: 'create', changed_by: profile!.user_id, new_data: row as Record<string, unknown>,
+      }] as never);
+      return insertedRow;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['donations', villageId] }); toast.success('Donation added'); setShowAddDonation(false); },
     onError: (e: Error) => toast.error(e.message),
@@ -187,17 +184,15 @@ const DonationsPage: React.FC = () => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const { data: row, error } = await supabase
-        .from('expenses')
-        .insert({ ...data, village_id: villageId, responsible_admin: profile!.user_id })
-        .select()
-        .single();
+      const payload = { ...data, village_id: villageId!, responsible_admin: profile!.user_id };
+      const { data: row, error } = await supabase.from('expenses').insert([payload] as never).select().single();
       if (error) throw error;
-      await supabase.from('fund_audit_log').insert({
-        village_id: villageId!, record_type: 'expense', record_id: row.id,
-        action: 'create', changed_by: profile!.user_id, new_data: row,
-      });
-      return row;
+      const insertedRow = row as { id: string };
+      await supabase.from('fund_audit_log').insert([{
+        village_id: villageId!, record_type: 'expense', record_id: insertedRow.id,
+        action: 'create', changed_by: profile!.user_id, new_data: row as Record<string, unknown>,
+      }] as never);
+      return insertedRow;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', villageId] }); toast.success('Expense added'); setShowAddExpense(false); },
     onError: (e: Error) => toast.error(e.message),
@@ -205,13 +200,17 @@ const DonationsPage: React.FC = () => {
 
   const editMutation = useMutation({
     mutationFn: async ({ type, id, prev, next }: { type: string; id: string; prev: Record<string, unknown>; next: Record<string, unknown> }) => {
-      const table = type === 'donation' ? 'donations' : 'expenses';
-      const { error } = await supabase.from(table as 'donations').update(next).eq('id', id);
-      if (error) throw error;
-      await supabase.from('fund_audit_log').insert({
+      if (type === 'donation') {
+        const { error } = await supabase.from('donations').update(next as never).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('expenses').update(next as never).eq('id', id);
+        if (error) throw error;
+      }
+      await supabase.from('fund_audit_log').insert([{
         village_id: villageId!, record_type: type, record_id: id,
         action: 'edit', changed_by: profile!.user_id, previous_data: prev, new_data: next,
-      });
+      }] as never);
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: [vars.type === 'donation' ? 'donations' : 'expenses', villageId] });
