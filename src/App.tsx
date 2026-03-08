@@ -22,6 +22,8 @@ import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import MapPage from "@/pages/MapPage";
+import TeamsPage from "@/pages/TeamsPage";
+import VillageManagementPage from "@/pages/admin/VillageManagementPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -121,6 +123,7 @@ function AppRoutes() {
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/teams" element={<TeamsPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
@@ -129,6 +132,7 @@ function AppRoutes() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
+          <Route path="/admin/villages" element={<VillageManagementPage />} />
         </Route>
       </Route>
 

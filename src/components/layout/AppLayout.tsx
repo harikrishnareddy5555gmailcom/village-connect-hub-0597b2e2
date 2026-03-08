@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
-  LogOut, MapPin, BarChart3,
+  LogOut, MapPin, BarChart3, Globe,
   Menu, X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ const navItems: NavItem[] = [
   { to: '/complaints', icon: <AlertTriangle size={18} />, label: 'Complaints', labelTe: 'ఫిర్యాదులు' },
   { to: '/businesses', icon: <Building2 size={18} />, label: 'Business Directory', labelTe: 'వ్యాపారాలు' },
   { to: '/projects', icon: <Briefcase size={18} />, label: 'Projects', labelTe: 'ప్రాజెక్టులు' },
+  { to: '/teams', icon: <Users size={18} />, label: 'Teams', labelTe: 'బృందాలు' },
   { to: '/map', icon: <MapPin size={18} />, label: 'Village Map', labelTe: 'గ్రామ పటం' },
   { to: '/profile', icon: <Users size={18} />, label: 'My Profile', labelTe: 'నా ప్రొఫైల్' },
 ];
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { to: '/admin', icon: <BarChart3 size={18} />, label: 'Admin Dashboard', labelTe: 'అడ్మిన్ డాష్‌బోర్డ్', adminOnly: true },
   { to: '/admin/users', icon: <Users size={18} />, label: 'Manage Users', labelTe: 'యూజర్లు', adminOnly: true },
+  { to: '/admin/villages', icon: <Globe size={18} />, label: 'Villages', labelTe: 'గ్రామాలు', superAdminOnly: true },
   { to: '/admin/settings', icon: <Settings size={18} />, label: 'Settings', labelTe: 'సెట్టింగ్స్', adminOnly: true },
 ];
 
@@ -120,7 +122,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
                 Admin
               </p>
             </div>
-            {adminNavItems.map((item) => (
+            {adminNavItems
+              .filter(item => !item.superAdminOnly || role === 'super_admin')
+              .map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
