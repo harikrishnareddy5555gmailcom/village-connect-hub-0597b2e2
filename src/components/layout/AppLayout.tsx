@@ -223,6 +223,13 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           </button>
           <img src={villageConnectLogo} alt="" className="w-7 h-7" />
           <span className="font-bold text-sm text-foreground flex-1">Village Connect</span>
+          <button
+            onClick={toggleTheme}
+            className="text-foreground/70 hover:text-foreground p-1"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <NotificationsBell />
         </header>
 
