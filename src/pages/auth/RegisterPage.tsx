@@ -74,7 +74,7 @@ const RegisterPage: React.FC = () => {
             <p className="text-sm text-muted-foreground">Varadayapalli</p>
           </div>
           <div className="lg:hidden text-center mb-8">
-            <img src={villageConnectLogo} alt="" className="w-16 h-16 mx-auto mb-3" />
+            <img src={varadayapalliLogo} alt="Varadayapalli" className="w-16 h-16 mx-auto mb-3 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Village Connect</h1>
           </div>
 
