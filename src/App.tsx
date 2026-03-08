@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -68,7 +69,14 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-import React from "react";
+const ComingSoon: React.FC<{ title: string; emoji: string }> = ({ title, emoji }) => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+    <div className="text-6xl mb-4">{emoji}</div>
+    <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
+    <p className="text-muted-foreground">This section is coming soon!</p>
+    <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -107,15 +115,6 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
-
-const ComingSoon: React.FC<{ title: string; emoji: string }> = ({ title, emoji }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-    <div className="text-6xl mb-4">{emoji}</div>
-    <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
-    <p className="text-muted-foreground">This section is coming soon!</p>
-    <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
-  </div>
 );
 
 export default App;
