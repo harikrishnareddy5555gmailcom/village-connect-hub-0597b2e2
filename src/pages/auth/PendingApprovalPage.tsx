@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +7,12 @@ import villageConnectLogo from '@/assets/village-connect-logo.png';
 
 const PendingApprovalPage: React.FC = () => {
   const { signOut, profile } = useAuth();
+  const navigate = useNavigate();
+
+  const handleBack = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -46,7 +52,7 @@ const PendingApprovalPage: React.FC = () => {
           <Button
             variant="outline"
             className="w-full"
-            onClick={signOut}
+            onClick={handleBack}
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to Login
