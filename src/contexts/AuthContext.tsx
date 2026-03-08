@@ -60,25 +60,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let mounted = true;
+    let loadingResolved = false;
 
-    // Get initial session first
-    supabase.auth.getSession().then(async ({ data: { session: initSession } }) => {
-      if (!mounted) return;
-      setSession(initSession);
-      setUser(initSession?.user ?? null);
-      if (initSession?.user) {
-        await fetchProfile(initSession.user.id);
+    const resolveLoading = () => {
+      if (mounted && !loadingResolved) {
+        loadingResolved = true;
+        setLoading(false);
       }
-      setLoading(false);
-    }).catch(() => {
-      if (mounted) setLoading(false);
-    });
+    };
 
-    // Listen for subsequent auth changes
+    // Safety timeout — never stay stuck loading beyond 5s
+    const timeout = setTimeout(resolveLoading, 5000);
+
+    // Listen for auth state changes (INITIAL_SESSION fires first with current session)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         if (!mounted) return;
-        if (event === 'INITIAL_SESSION') return; // handled above
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (newSession?.user) {
@@ -87,11 +84,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(null);
           setRole(null);
         }
+        // Resolve loading on INITIAL_SESSION or SIGNED_IN/OUT
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          resolveLoading();
+        }
       }
     );
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
