@@ -228,7 +228,7 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = ({ post }) => {
     queryFn: async () => {
       const { data } = await supabase
         .from('comments')
-        .select('*, profiles!comments_author_id_fkey(full_name, avatar_url)')
+        .select('*, profiles(full_name, avatar_url)')
         .eq('post_id', post.id)
         .eq('is_deleted', false)
         .order('created_at');
@@ -402,7 +402,7 @@ const FeedPage: React.FC = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_author_id_fkey(full_name, avatar_url, occupation)
+          profiles(full_name, avatar_url, occupation)
         `)
         .eq('village_id', currentVillage!.id)
         .eq('is_deleted', false)

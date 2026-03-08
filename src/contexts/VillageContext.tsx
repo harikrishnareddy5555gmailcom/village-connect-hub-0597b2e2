@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/types';
 
@@ -10,12 +10,14 @@ interface VillageContextType {
   villages: Village[];
   loading: boolean;
   setCurrentVillage: (v: Village) => void;
+  refreshVillage: () => Promise<void>;
 }
 
 const VillageContext = createContext<VillageContextType | undefined>(undefined);
 
 export const VillageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentVillage, setCurrentVillage] = useState<Village | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: villages = [], isLoading } = useQuery({
     queryKey: ['villages'],
@@ -34,12 +36,28 @@ export const VillageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     },
   });
 
+  const refreshVillage = async () => {
+    const result = await queryClient.fetchQuery({
+      queryKey: ['villages'],
+      queryFn: async () => {
+        const { data, error } = await supabase.from('villages').select('*').eq('is_active', true).order('name');
+        if (error) throw error;
+        return data ?? [];
+      },
+    });
+    if (currentVillage && result) {
+      const updated = (result as Village[]).find(v => v.id === currentVillage.id);
+      if (updated) setCurrentVillage(updated);
+    }
+  };
+
   return (
     <VillageContext.Provider value={{
       currentVillage,
       villages,
       loading: isLoading,
       setCurrentVillage,
+      refreshVillage,
     }}>
       {children}
     </VillageContext.Provider>
