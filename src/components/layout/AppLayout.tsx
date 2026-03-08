@@ -209,11 +209,11 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           <NotificationsBell />
         </header>
 
-        {/* Page Content */}
+      {/* Page Content */}
         <main className={cn(
           "flex-1 min-h-0",
           isMapPage ? "overflow-hidden flex flex-col" : "overflow-y-auto"
-        )}>
+        )} style={{ position: 'relative', zIndex: 1 }}>
           {children}
         </main>
       </div>
