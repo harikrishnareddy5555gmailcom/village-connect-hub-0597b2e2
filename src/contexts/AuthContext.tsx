@@ -22,6 +22,7 @@ interface SignUpData {
   fullName: string;
   mobileNumber: string;
   password: string;
+  email?: string;
 }
 
 const defaultAuthContext: AuthContextType = {
