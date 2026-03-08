@@ -62,20 +62,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
   };
 
   return (
-    <div className={cn(
-      "flex flex-col h-full",
-      "bg-sidebar text-sidebar-foreground"
-    )}>
+    <div className={cn("flex flex-col h-full", "bg-sidebar text-sidebar-foreground")}>
       {/* Header */}
       <div className="px-4 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-10 h-10 rounded-xl object-contain" />
+          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-11 h-11 rounded-xl object-contain bg-white/10 p-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm leading-tight text-sidebar-foreground truncate">వరదయపల్లి</p>
-            <p className="text-[10px] text-sidebar-foreground/70 truncate">Varadayapalli</p>
-            {currentVillage && (
-              <p className="text-xs text-sidebar-foreground/70 truncate">{currentVillage.name}</p>
-            )}
+            <p className="text-[11px] text-sidebar-foreground/70 truncate">Varadayapalli</p>
           </div>
           {mobile ? (
             <button onClick={onClose} className="ml-auto text-sidebar-foreground/70 hover:text-sidebar-foreground">
@@ -131,21 +125,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
             {adminNavItems
               .filter(item => !item.superAdminOnly || role === 'super_admin')
               .map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={onClose}
-                className={cn(
-                  "nav-link",
-                  location.pathname === item.to || location.pathname.startsWith(item.to + '/')
-                    ? 'active'
-                    : 'text-sidebar-foreground/80'
-                )}
-              >
-                {item.icon}
-                <span className="flex-1">{item.label}</span>
-              </Link>
-            ))}
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={onClose}
+                  className={cn(
+                    "nav-link",
+                    location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+                      ? 'active'
+                      : 'text-sidebar-foreground/80'
+                  )}
+                >
+                  {item.icon}
+                  <span className="flex-1">{item.label}</span>
+                </Link>
+              ))}
           </>
         )}
       </nav>
@@ -235,80 +229,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         </header>
 
         {/* Page Content */}
-        <main className={cn(
-          "flex-1 min-h-0",
-          isMapPage ? "overflow-hidden flex flex-col" : "overflow-y-auto"
-        )} style={{ position: 'relative', zIndex: 1 }}>
-          {children}
-        </main>
-      </div>
-    </div>
-  );
-};
-
-  // Map page needs overflow-hidden so the map can fill the exact remaining height
-  const isMapPage = location.pathname === '/map';
-
-  return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex w-60 flex-shrink-0 flex-col">
-        <Sidebar />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-64 flex-shrink-0 animate-slide-in-left">
-            <Sidebar mobile onClose={() => setSidebarOpen(false)} />
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Top Bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm flex-shrink-0" style={{ position: 'relative', zIndex: 20 }}>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-foreground/70 hover:text-foreground"
-          >
-            <Menu size={22} />
-          </button>
-          <img src={varadayapalliLogo} alt="Varadayapalli" className="w-7 h-7 rounded-lg object-contain" />
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm text-foreground leading-tight">వరదయపల్లి</p>
-            <p className="text-[10px] text-muted-foreground leading-tight">Varadayapalli</p>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className="text-foreground/70 hover:text-foreground p-1"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <NotificationsBell />
-        </header>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-foreground/70 hover:text-foreground"
-          >
-            <Menu size={22} />
-          </button>
-          <img src={villageConnectLogo} alt="" className="w-7 h-7" />
-          <span className="font-bold text-sm text-foreground flex-1">Village Connect</span>
-          <button
-            onClick={toggleTheme}
-            className="text-foreground/70 hover:text-foreground p-1"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-          <NotificationsBell />
-        </header>
-
-      {/* Page Content */}
         <main className={cn(
           "flex-1 min-h-0",
           isMapPage ? "overflow-hidden flex flex-col" : "overflow-y-auto"
