@@ -188,6 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
   // Map page needs overflow-hidden so the map can fill the exact remaining height
