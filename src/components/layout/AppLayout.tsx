@@ -197,7 +197,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Top Bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm flex-shrink-0">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border shadow-sm flex-shrink-0" style={{ position: 'relative', zIndex: 20 }}>
           <button
             onClick={() => setSidebarOpen(true)}
             className="text-foreground/70 hover:text-foreground"
@@ -209,11 +209,11 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           <NotificationsBell />
         </header>
 
-        {/* Page Content */}
+      {/* Page Content */}
         <main className={cn(
           "flex-1 min-h-0",
           isMapPage ? "overflow-hidden flex flex-col" : "overflow-y-auto"
-        )}>
+        )} style={{ position: 'relative', zIndex: 1 }}>
           {children}
         </main>
       </div>
