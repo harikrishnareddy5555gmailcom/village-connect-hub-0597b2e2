@@ -69,6 +69,11 @@ const RegisterPage: React.FC = () => {
         <div className="w-full max-w-md">
           {/* Mobile header */}
           <div className="lg:hidden text-center mb-8">
+            <img src={varadayapalliLogo} alt="Varadayapalli" className="w-16 h-16 mx-auto mb-3 object-contain" />
+            <h1 className="text-2xl font-bold text-foreground">వరదయపల్లి</h1>
+            <p className="text-sm text-muted-foreground">Varadayapalli</p>
+          </div>
+          <div className="lg:hidden text-center mb-8">
             <img src={villageConnectLogo} alt="" className="w-16 h-16 mx-auto mb-3" />
             <h1 className="text-2xl font-bold text-foreground">Village Connect</h1>
           </div>
