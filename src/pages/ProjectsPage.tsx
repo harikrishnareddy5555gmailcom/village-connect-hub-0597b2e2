@@ -38,7 +38,7 @@ const ProjectUpdates: React.FC<{ projectId: string }> = ({ projectId }) => {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('project_updates')
-        .select('*, profiles(full_name, avatar_url)')
+        .select('*, profiles!project_updates_author_id_profiles_fkey(full_name, avatar_url)')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
       return data ?? [];
@@ -320,7 +320,7 @@ const ProjectsPage: React.FC = () => {
     queryFn: async () => {
       let q = (supabase as any)
         .from('projects')
-        .select('*, profiles(full_name)')
+        .select('*, profiles!projects_created_by_profiles_fkey(full_name)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
       if (filterStatus !== 'all') q = q.eq('status', filterStatus);

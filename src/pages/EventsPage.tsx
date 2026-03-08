@@ -32,7 +32,7 @@ const EventsPage: React.FC = () => {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('events')
-        .select('*, profiles(full_name)')
+        .select('*, profiles!events_created_by_profiles_fkey(full_name)')
         .eq('village_id', currentVillage!.id)
         .order('event_date', { ascending: true });
       return data ?? [];

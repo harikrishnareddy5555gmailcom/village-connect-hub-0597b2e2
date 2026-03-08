@@ -226,9 +226,9 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = React.memo(({ post }) => {
     queryKey: ['comments', post.id],
     enabled: showComments,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('comments')
-        .select('*, profiles(full_name, avatar_url)')
+        .select('*, profiles!comments_author_id_profiles_fkey(full_name, avatar_url)')
         .eq('post_id', post.id)
         .eq('is_deleted', false)
         .order('created_at');
@@ -399,11 +399,11 @@ const FeedPage: React.FC = () => {
     queryKey: ['posts', currentVillage?.id],
     enabled: !!currentVillage,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('posts')
         .select(`
           *,
-          profiles(full_name, avatar_url, occupation)
+          profiles!posts_author_id_profiles_fkey(full_name, avatar_url, occupation)
         `)
         .eq('village_id', currentVillage!.id)
         .eq('is_deleted', false)
