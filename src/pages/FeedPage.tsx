@@ -387,7 +387,8 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = React.memo(({ post }) => {
       )}
     </div>
   );
-};
+});
+PostCard.displayName = 'PostCard';
 
 // ---- Main Feed Page ----
 const FeedPage: React.FC = () => {
