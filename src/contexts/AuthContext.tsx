@@ -35,22 +35,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      const [profileRes, rolesRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('user_id', userId).single(),
+        supabase.from('user_roles').select('role').eq('user_id', userId),
+      ]);
 
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .returns<Array<{ role: AppRole }>>();
+      setProfile(profileRes.data ?? null);
 
-      setProfile(profileData);
+      const rolesData = rolesRes.data as Array<{ role: AppRole }> | null;
       const roleOrder: Record<AppRole, number> = { super_admin: 1, admin: 2, moderator: 3, user: 4 };
       const topRole = rolesData && rolesData.length > 0
-        ? rolesData.sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99))[0].role
+        ? [...rolesData].sort((a, b) => (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99))[0].role
         : null;
       setRole(topRole);
     } catch {
@@ -64,9 +59,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Set up auth state listener BEFORE getting session
+    let mounted = true;
+
+    // Get initial session first
+    supabase.auth.getSession().then(async ({ data: { session: initSession } }) => {
+      if (!mounted) return;
+      setSession(initSession);
+      setUser(initSession?.user ?? null);
+      if (initSession?.user) {
+        await fetchProfile(initSession.user.id);
+      }
+      setLoading(false);
+    }).catch(() => {
+      if (mounted) setLoading(false);
+    });
+
+    // Listen for subsequent auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        if (!mounted) return;
+        if (event === 'INITIAL_SESSION') return; // handled above
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (newSession?.user) {
@@ -75,37 +87,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(null);
           setRole(null);
         }
-        setLoading(false);
       }
     );
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session: initSession } }) => {
-      setSession(initSession);
-      setUser(initSession?.user ?? null);
-      if (initSession?.user) {
-        fetchProfile(initSession.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async ({ fullName, mobileNumber, password }: SignUpData) => {
     try {
-      // Use phone number as email (fake email pattern for mobile-based auth)
       const fakeEmail = `${mobileNumber}@villageconnect.app`;
       const { error } = await supabase.auth.signUp({
         email: fakeEmail,
         password,
-        options: {
-          data: {
-            full_name: fullName,
-            mobile_number: mobileNumber,
-          },
-        },
+        options: { data: { full_name: fullName, mobile_number: mobileNumber } },
       });
       return { error };
     } catch (err) {
@@ -116,10 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (mobile: string, password: string) => {
     try {
       const fakeEmail = `${mobile}@villageconnect.app`;
-      const { error } = await supabase.auth.signInWithPassword({
-        email: fakeEmail,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
       return { error };
     } catch (err) {
       return { error: err as Error };
