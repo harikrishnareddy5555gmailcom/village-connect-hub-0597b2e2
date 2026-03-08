@@ -52,6 +52,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
   const { profile, role, signOut } = useAuth();
   const { currentVillage } = useVillage();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
 
