@@ -157,13 +157,21 @@ const MapPage: React.FC = () => {
     saveLocation.mutate({ newLat: pendingLat, newLng: pendingLng });
   };
 
-  const isLoading = loadingBusinesses;
+  const isLoading = loadingBusinesses || loadingComplaints;
 
   const displayLat = editingPin ? (pendingLat ?? lat) : lat;
   const displayLng = editingPin ? (pendingLng ?? lng) : lng;
   const hasLocation = !!(currentVillage?.latitude && currentVillage?.longitude);
 
   const mappedBusinesses = businesses.filter(b => b.latitude && b.longitude);
+  const mappedComplaints = complaints.filter((c: any) => c.latitude && c.longitude);
+
+  const complaintIcon = (status: string) => {
+    if (status === 'resolved') return complaintResolvedIcon;
+    if (status === 'in_progress') return complaintProgressIcon;
+    return complaintReportedIcon;
+  };
+
 
   return (
     <div className="flex flex-col" style={{ height: '100%', minHeight: 0 }}>
