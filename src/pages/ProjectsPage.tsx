@@ -3,12 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Briefcase, Plus, X, Loader2, IndianRupee, Calendar, Users, SlidersHorizontal } from 'lucide-react';
+import { Briefcase, Plus, X, Loader2, IndianRupee, Calendar, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
@@ -22,6 +21,124 @@ const STATUS_CONFIG = {
   delayed: { label: 'Delayed', color: 'bg-warning/15 text-yellow-700 border-warning/30' },
 };
 
+const progressMap: Record<string, number> = { planned: 0, in_progress: 50, completed: 100, delayed: 30 };
+
+// ---- Project Card ----
+interface ProjectCardProps {
+  project: any;
+  isAdmin: boolean;
+  onStatusChange: (status: string, progress: number) => void;
+  onProgressChange: (progress: number) => void;
+}
+
+const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatusChange, onProgressChange }) => {
+  const statusCfg = STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG];
+  const prog = p.progress ?? progressMap[p.status] ?? 0;
+  const [sliderVal, setSliderVal] = useState(prog);
+  const [showSlider, setShowSlider] = useState(false);
+
+  return (
+    <div className="vcp-card p-5">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h4 className="font-semibold text-foreground">{p.title}</h4>
+          {p.profiles?.full_name && (
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Users size={11} />By {p.profiles.full_name}
+            </p>
+          )}
+        </div>
+        <span className={`border rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${statusCfg?.color}`}>
+          {statusCfg?.label}
+        </span>
+      </div>
+
+      {p.description && <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{p.description}</p>}
+
+      {/* Progress */}
+      <div className="mb-3">
+        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+          <span>Progress</span>
+          <span className="font-medium text-primary">{prog}%</span>
+        </div>
+        <Progress value={prog} className="h-2" />
+      </div>
+
+      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap mb-3">
+        {p.budget && (
+          <span className="flex items-center gap-1">
+            <IndianRupee size={11} className="text-primary" />
+            {parseFloat(p.budget).toLocaleString('en-IN')} budget
+          </span>
+        )}
+        {p.start_date && (
+          <span className="flex items-center gap-1">
+            <Calendar size={11} />
+            {format(new Date(p.start_date), 'dd MMM yyyy')}
+            {p.end_date && ` → ${format(new Date(p.end_date), 'dd MMM yyyy')}`}
+          </span>
+        )}
+      </div>
+
+      {isAdmin && (
+        <div className="space-y-3 pt-2 border-t border-border">
+          {/* Status buttons */}
+          <div className="flex gap-2 flex-wrap">
+            {(['planned', 'in_progress', 'completed', 'delayed'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => onStatusChange(s, progressMap[s])}
+                disabled={p.status === s}
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                  p.status === s
+                    ? STATUS_CONFIG[s].color + ' cursor-default'
+                    : 'border-border text-muted-foreground hover:border-primary/50'
+                )}
+              >
+                {STATUS_CONFIG[s].label}
+              </button>
+            ))}
+          </div>
+
+          {/* Progress slider */}
+          <div>
+            <button
+              onClick={() => setShowSlider(v => !v)}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              {showSlider ? '▲ Hide' : '▼ Set custom progress %'}
+            </button>
+            {showSlider && (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-3">
+                  <Slider
+                    value={[sliderVal]}
+                    onValueChange={([v]) => setSliderVal(v)}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="flex-1"
+                  />
+                  <span className="text-xs font-bold text-primary w-8 text-right">{sliderVal}%</span>
+                </div>
+                <Button
+                  size="sm"
+                  className="btn-primary-gradient h-7 text-xs"
+                  onClick={() => { onProgressChange(sliderVal); setShowSlider(false); }}
+                >
+                  Update Progress
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- Main Page ----
 const ProjectsPage: React.FC = () => {
   const { user, role } = useAuth();
   const { currentVillage } = useVillage();
@@ -75,9 +192,11 @@ const ProjectsPage: React.FC = () => {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const updateProjectStatus = useMutation({
-    mutationFn: async ({ id, status, progress }: { id: string; status: string; progress: number }) => {
-      const { error } = await (supabase as any).from('projects').update({ status, progress }).eq('id', id);
+  const updateProject = useMutation({
+    mutationFn: async ({ id, status, progress }: { id: string; status?: string; progress: number }) => {
+      const update: any = { progress };
+      if (status !== undefined) update.status = status;
+      const { error } = await (supabase as any).from('projects').update(update).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -85,8 +204,6 @@ const ProjectsPage: React.FC = () => {
       toast.success('Project updated');
     },
   });
-
-  const progressMap: Record<string, number> = { planned: 0, in_progress: 50, completed: 100, delayed: 30 };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -177,22 +294,19 @@ const ProjectsPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {projects.map((p: any) => {
-            const statusCfg = STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG];
-            const prog = p.progress ?? progressMap[p.status] ?? 0;
-            return (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                statusCfg={statusCfg}
-                prog={prog}
-                isAdmin={isAdmin}
-                onStatusChange={(status, progress) =>
-                  updateProjectStatus.mutate({ id: p.id, status, progress })
-                }
-              />
-            );
-          })}
+          {projects.map((p: any) => (
+            <ProjectCard
+              key={p.id}
+              project={p}
+              isAdmin={isAdmin}
+              onStatusChange={(status, progress) =>
+                updateProject.mutate({ id: p.id, status, progress })
+              }
+              onProgressChange={(progress) =>
+                updateProject.mutate({ id: p.id, progress })
+              }
+            />
+          ))}
         </div>
       )}
     </div>
