@@ -115,7 +115,11 @@ function AppRoutes() {
       <Route element={<GuestGuard />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       </Route>
+
+      {/* Public — accessible regardless of auth state */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route path="/pending-approval" element={<PendingApprovalPage />} />
 
