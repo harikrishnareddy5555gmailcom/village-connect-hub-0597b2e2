@@ -76,6 +76,7 @@ const MapPage: React.FC = () => {
 
   const [showBusinesses, setShowBusinesses] = useState(true);
   const [showComplaints, setShowComplaints] = useState(true);
+  const [complaintStatusFilter, setComplaintStatusFilter] = useState<'all' | 'reported' | 'in_progress' | 'resolved'>('all');
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
   const [editingPin, setEditingPin] = useState(false);
@@ -164,7 +165,9 @@ const MapPage: React.FC = () => {
   const hasLocation = !!(currentVillage?.latitude && currentVillage?.longitude);
 
   const mappedBusinesses = businesses.filter(b => b.latitude && b.longitude);
-  const mappedComplaints = complaints.filter((c: any) => c.latitude && c.longitude);
+  const mappedComplaints = complaints
+    .filter((c: any) => c.latitude && c.longitude)
+    .filter((c: any) => complaintStatusFilter === 'all' || c.status === complaintStatusFilter);
 
   const complaintIcon = (status: string) => {
     if (status === 'resolved') return complaintResolvedIcon;
@@ -260,6 +263,29 @@ const MapPage: React.FC = () => {
           {showComplaints ? <Eye size={11} /> : <EyeOff size={11} />}
           <AlertTriangle size={11} className="ml-0.5" /> {mappedComplaints.length} Complaints
         </button>
+        {/* Complaint status sub-filters — only visible when complaints are shown */}
+        {showComplaints && (
+          <>
+            <div className="w-px h-3 bg-border" />
+            {(['all', 'reported', 'in_progress', 'resolved'] as const).map(s => {
+              const labels = { all: 'All', reported: '⚠️', in_progress: '🔧', resolved: '✅' };
+              const active = complaintStatusFilter === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => setComplaintStatusFilter(s)}
+                  className={cn(
+                    "text-[10px] whitespace-nowrap px-2 py-0.5 rounded-full border transition-colors",
+                    active ? "bg-primary text-primary-foreground border-primary" : "text-muted-foreground border-border hover:border-primary/40"
+                  )}
+                >
+                  {labels[s]} {s !== 'all' ? '' : ''}
+                </button>
+              );
+            })}
+            <div className="w-px h-3 bg-border" />
+          </>
+        )}
         <button
           onClick={() => setShowBusinesses(v => !v)}
           className={cn(
@@ -272,7 +298,7 @@ const MapPage: React.FC = () => {
         </button>
         <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
           <Info size={10} />
-          Only pinned locations shown
+          Only pinned
         </div>
       </div>
 

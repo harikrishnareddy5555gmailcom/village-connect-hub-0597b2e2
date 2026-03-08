@@ -126,13 +126,23 @@ const ComplaintsPage: React.FC = () => {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, reporterId, complaintTitle }: { id: string; status: string; reporterId: string; complaintTitle: string }) => {
       const { error } = await (supabase as any).from('complaints').update({ status }).eq('id', id);
       if (error) throw error;
+      // Send notification to reporter
+      const statusLabel = status === 'in_progress' ? 'In Progress' : status === 'resolved' ? 'Resolved' : 'Reported';
+      await (supabase as any).from('notifications').insert({
+        user_id: reporterId,
+        village_id: currentVillage!.id,
+        type: 'complaint_update',
+        title: 'Complaint Status Updated',
+        message: `Your complaint "${complaintTitle}" is now marked as ${statusLabel}.`,
+        reference_id: id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complaints'] });
-      toast.success('Status updated');
+      toast.success('Status updated & reporter notified');
     },
   });
 
@@ -370,7 +380,7 @@ const ComplaintsPage: React.FC = () => {
                             {(['reported', 'in_progress', 'resolved'] as const).map(s => (
                               <button
                                 key={s}
-                                onClick={() => updateStatus.mutate({ id: c.id, status: s })}
+                                onClick={() => updateStatus.mutate({ id: c.id, status: s, reporterId: c.reporter_id, complaintTitle: c.title })}
                                 disabled={c.status === s || updateStatus.isPending}
                                 className={cn(
                                   'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
