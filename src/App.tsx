@@ -22,6 +22,8 @@ import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import MapPage from "@/pages/MapPage";
+import TeamsPage from "@/pages/TeamsPage";
+import VillageManagementPage from "@/pages/admin/VillageManagementPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
