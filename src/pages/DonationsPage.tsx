@@ -242,13 +242,14 @@ const DonationsPage: React.FC = () => {
   const undoMutation = useMutation({
     mutationFn: async (entry: AuditEntry) => {
       if (!entry.previous_data) { toast.info('Nothing to undo'); return; }
-      const table = entry.record_type === 'donation' ? 'donations' : 'expenses';
-      const { error } = await supabase.from(table as 'donations').update(entry.previous_data as Record<string, unknown>).eq('id', entry.record_id);
-      if (error) throw error;
-      await supabase.from('fund_audit_log').insert({
-        village_id: villageId!, record_type: entry.record_type, record_id: entry.record_id,
-        action: 'undo', changed_by: profile!.user_id, previous_data: entry.new_data, new_data: entry.previous_data,
-      });
+      if (entry.record_type === 'donation') {
+        const { error } = await supabase.from('donations').update(entry.previous_data as never).eq('id', entry.record_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('expenses').update(entry.previous_data as never).eq('id', entry.record_id);
+        if (error) throw error;
+      }
+      await logAudit(entry.record_type, entry.record_id, 'undo', entry.new_data, entry.previous_data);
     },
     onSuccess: (_, entry) => {
       qc.invalidateQueries({ queryKey: [entry.record_type === 'donation' ? 'donations' : 'expenses', villageId] });
