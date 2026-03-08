@@ -130,6 +130,7 @@ function AppRoutes() {
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/donations" element={<DonationsPage />} />
         <Route path="/members" element={<MembersPage />} />
+        <Route path="/stats" element={<VillageStatsPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
@@ -153,11 +154,13 @@ const App = () => (
       <Toaster />
       <Sonner richColors position="top-right" />
       <BrowserRouter>
-        <AuthProvider>
-          <VillageProvider>
-            <AppRoutes />
-          </VillageProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <VillageProvider>
+              <AppRoutes />
+            </VillageProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

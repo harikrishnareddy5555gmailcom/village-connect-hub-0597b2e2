@@ -4,10 +4,11 @@ import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
   LogOut, MapPin, BarChart3, Globe,
-  Menu, X, DollarSign, BookUser
+  Menu, X, DollarSign, BookUser, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import villageConnectLogo from '@/assets/village-connect-logo.png';
 import { cn } from '@/lib/utils';
 import NotificationsBell from '@/components/NotificationsBell';
