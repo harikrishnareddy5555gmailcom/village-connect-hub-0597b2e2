@@ -25,7 +25,14 @@ import MapPage from "@/pages/MapPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60_000, // 5 minutes — reduces refetch churn
+      gcTime: 10 * 60_000,   // 10 minutes cache
+      refetchOnWindowFocus: false, // prevents unnecessary fetches on tab switch
+    },
+  },
 });
 
 const LoadingScreen = () => (
