@@ -21,6 +21,7 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import NotFound from "@/pages/NotFound";
+import MapPage from "@/pages/MapPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -111,7 +112,7 @@ function AppRoutes() {
         <Route path="/complaints" element={<ComplaintsPage />} />
         <Route path="/businesses" element={<BusinessDirectoryPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/map" element={<ComingSoon title="Village Map" emoji="🗺️" />} />
+        <Route path="/map" element={<MapPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
