@@ -166,17 +166,33 @@ const DonationsPage: React.FC = () => {
     onError: () => toast.error('Failed to update setting'),
   });
 
+  const logAudit = async (record_type: string, record_id: string, action: string, previous_data?: Record<string, unknown> | null, new_data?: Record<string, unknown> | null) => {
+    await supabase.from('fund_audit_log').insert({
+      village_id: villageId!,
+      record_type,
+      record_id,
+      action,
+      changed_by: profile!.user_id,
+      previous_data: previous_data ?? null,
+      new_data: new_data ?? null,
+    } as never);
+  };
+
   const addDonationMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const payload = { ...data, village_id: villageId!, added_by: profile!.user_id };
-      const { data: row, error } = await supabase.from('donations').insert([payload as Parameters<typeof supabase.from<'donations'>>[0] extends unknown ? never : never] as never).select().single();
+      const { data: row, error } = await supabase.from('donations').insert({
+        donor_name: data.donor_name as string,
+        amount: data.amount as number,
+        date: data.date as string,
+        project_id: (data.project_id as string) || null,
+        notes: (data.notes as string) || null,
+        is_anonymous: data.is_anonymous as boolean,
+        village_id: villageId!,
+        added_by: profile!.user_id,
+      }).select().single();
       if (error) throw error;
-      const insertedRow = row as { id: string };
-      await supabase.from('fund_audit_log').insert([{
-        village_id: villageId!, record_type: 'donation', record_id: insertedRow.id,
-        action: 'create', changed_by: profile!.user_id, new_data: row as Record<string, unknown>,
-      }] as never);
-      return insertedRow;
+      await logAudit('donation', row.id, 'create', null, row as unknown as Record<string, unknown>);
+      return row;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['donations', villageId] }); toast.success('Donation added'); setShowAddDonation(false); },
     onError: (e: Error) => toast.error(e.message),
@@ -184,15 +200,20 @@ const DonationsPage: React.FC = () => {
 
   const addExpenseMutation = useMutation({
     mutationFn: async (data: Record<string, unknown>) => {
-      const payload = { ...data, village_id: villageId!, responsible_admin: profile!.user_id };
-      const { data: row, error } = await supabase.from('expenses').insert([payload] as never).select().single();
+      const { data: row, error } = await supabase.from('expenses').insert({
+        description: data.description as string,
+        amount: data.amount as number,
+        date: data.date as string,
+        category: data.category as string,
+        project_id: (data.project_id as string) || null,
+        notes: (data.notes as string) || null,
+        proof_url: (data.proof_url as string) || null,
+        village_id: villageId!,
+        responsible_admin: profile!.user_id,
+      }).select().single();
       if (error) throw error;
-      const insertedRow = row as { id: string };
-      await supabase.from('fund_audit_log').insert([{
-        village_id: villageId!, record_type: 'expense', record_id: insertedRow.id,
-        action: 'create', changed_by: profile!.user_id, new_data: row as Record<string, unknown>,
-      }] as never);
-      return insertedRow;
+      await logAudit('expense', row.id, 'create', null, row as unknown as Record<string, unknown>);
+      return row;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['expenses', villageId] }); toast.success('Expense added'); setShowAddExpense(false); },
     onError: (e: Error) => toast.error(e.message),
@@ -207,10 +228,7 @@ const DonationsPage: React.FC = () => {
         const { error } = await supabase.from('expenses').update(next as never).eq('id', id);
         if (error) throw error;
       }
-      await supabase.from('fund_audit_log').insert([{
-        village_id: villageId!, record_type: type, record_id: id,
-        action: 'edit', changed_by: profile!.user_id, previous_data: prev, new_data: next,
-      }] as never);
+      await logAudit(type, id, 'edit', prev, next);
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: [vars.type === 'donation' ? 'donations' : 'expenses', villageId] });
