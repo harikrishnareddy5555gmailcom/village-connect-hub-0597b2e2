@@ -10,7 +10,15 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import PendingApprovalPage from "@/pages/auth/PendingApprovalPage";
 import FeedPage from "@/pages/FeedPage";
+import ProfilePage from "@/pages/ProfilePage";
+import ComplaintsPage from "@/pages/ComplaintsPage";
+import EventsPage from "@/pages/EventsPage";
+import BusinessDirectoryPage from "@/pages/BusinessDirectoryPage";
+import ProjectsPage from "@/pages/ProjectsPage";
+import DiscussionsPage from "@/pages/DiscussionsPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import UserManagementPage from "@/pages/admin/UserManagementPage";
+import SettingsPage from "@/pages/admin/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import { Loader2 } from "lucide-react";
 
