@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { VillageProvider } from "@/contexts/VillageContext";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -27,18 +27,9 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
 
-// ---- Helper components defined BEFORE they are used ----
+// ── Layout routes (use Outlet, compatible with React Router refs) ──
 
-const ComingSoon: React.FC<{ title: string; emoji: string }> = ({ title, emoji }) => (
-  <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
-    <div className="text-6xl mb-4">{emoji}</div>
-    <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
-    <p className="text-muted-foreground">This section is coming soon!</p>
-    <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
-  </div>
-);
-
-const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
+function AuthGuard() {
   const { user, profile, role, loading } = useAuth();
 
   if (loading) {
@@ -53,8 +44,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean 
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (profile?.status === 'pending') return <Navigate to="/pending-approval" replace />;
-  if (profile?.status === 'banned' || profile?.status === 'suspended') {
+  if (profile?.status === "pending") return <Navigate to="/pending-approval" replace />;
+  if (profile?.status === "banned" || profile?.status === "suspended") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center p-8">
@@ -65,50 +56,78 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean 
       </div>
     );
   }
-  if (adminOnly && role !== 'admin' && role !== 'super_admin' && role !== 'moderator') {
+
+  return (
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
+  );
+}
+
+function AdminGuard() {
+  const { role } = useAuth();
+  if (role !== "admin" && role !== "super_admin" && role !== "moderator") {
     return <Navigate to="/feed" replace />;
   }
+  return <Outlet />;
+}
 
-  return <AppLayout>{children}</AppLayout>;
-};
-
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+function GuestGuard() {
   const { user, profile, loading } = useAuth();
   if (loading) return null;
-  if (user && profile?.status === 'active') return <Navigate to="/feed" replace />;
-  if (user && profile?.status === 'pending') return <Navigate to="/pending-approval" replace />;
-  return <>{children}</>;
-};
+  if (user && profile?.status === "active") return <Navigate to="/feed" replace />;
+  if (user && profile?.status === "pending") return <Navigate to="/pending-approval" replace />;
+  return <Outlet />;
+}
 
-// ---- AppRoutes defined BEFORE App ----
-const AppRoutes = () => (
-  <Routes>
-    {/* Public Routes */}
-    <Route path="/" element={<Navigate to="/feed" replace />} />
-    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-    <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-    <Route path="/pending-approval" element={<PendingApprovalPage />} />
+function ComingSoon({ title, emoji }: { title: string; emoji: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
+      <div className="text-6xl mb-4">{emoji}</div>
+      <h2 className="text-2xl font-bold text-foreground mb-2">{title}</h2>
+      <p className="text-muted-foreground">This section is coming soon!</p>
+      <p className="text-xs text-muted-foreground mt-1">మరింత త్వరలో అందుబాటులోకి వస్తుంది</p>
+    </div>
+  );
+}
 
-    {/* Protected Routes */}
-    <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
-    <Route path="/discussions" element={<ProtectedRoute><DiscussionsPage /></ProtectedRoute>} />
-    <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
-    <Route path="/complaints" element={<ProtectedRoute><ComplaintsPage /></ProtectedRoute>} />
-    <Route path="/businesses" element={<ProtectedRoute><BusinessDirectoryPage /></ProtectedRoute>} />
-    <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-    <Route path="/map" element={<ProtectedRoute><ComingSoon title="Village Map" emoji="🗺️" /></ProtectedRoute>} />
-    <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/feed" replace />} />
 
-    {/* Admin Routes */}
-    <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-    <Route path="/admin/users" element={<ProtectedRoute adminOnly><UserManagementPage /></ProtectedRoute>} />
-    <Route path="/admin/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
+      {/* Guest-only routes */}
+      <Route element={<GuestGuard />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
 
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
+      <Route path="/pending-approval" element={<PendingApprovalPage />} />
 
-// ---- App: providers wrap the router ----
+      {/* Protected routes (wrapped in AppLayout via AuthGuard) */}
+      <Route element={<AuthGuard />}>
+        <Route path="/feed" element={<FeedPage />} />
+        <Route path="/discussions" element={<DiscussionsPage />} />
+        <Route path="/events" element={<EventsPage />} />
+        <Route path="/complaints" element={<ComplaintsPage />} />
+        <Route path="/businesses" element={<BusinessDirectoryPage />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/map" element={<ComingSoon title="Village Map" emoji="🗺️" />} />
+        <Route path="/profile" element={<ProfilePage />} />
+
+        {/* Admin-only nested routes */}
+        <Route element={<AdminGuard />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UserManagementPage />} />
+          <Route path="/admin/settings" element={<SettingsPage />} />
+        </Route>
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
