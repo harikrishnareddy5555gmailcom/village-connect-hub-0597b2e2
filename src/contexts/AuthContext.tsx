@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
@@ -44,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         supabase.from('profiles').select('*').eq('user_id', userId).single(),
         supabase.from('user_roles').select('role').eq('user_id', userId),
       ]);
+      if (!mountedRef.current) return;
 
       setProfile(profileRes.data ?? null);
 
@@ -61,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : null;
       setRole(topRole);
     } catch {
+      if (!mountedRef.current) return;
       setProfile(null);
       setRole(null);
     }
@@ -71,40 +74,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    let mounted = true;
-    let loadingResolved = false;
+    mountedRef.current = true;
 
-    const resolveLoading = () => {
-      if (mounted && !loadingResolved) {
-        loadingResolved = true;
+    // Safety timeout — never stay stuck loading beyond 8s
+    const timeout = setTimeout(() => {
+      if (mountedRef.current) setLoading(false);
+    }, 8000);
+
+    // Step 1: Restore session from storage first (synchronous path)
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!mountedRef.current) return;
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+
+      if (initialSession?.user) {
+        // Fetch profile then mark loading done
+        fetchProfile(initialSession.user.id).finally(() => {
+          if (mountedRef.current) {
+            clearTimeout(timeout);
+            setLoading(false);
+          }
+        });
+      } else {
+        clearTimeout(timeout);
         setLoading(false);
       }
-    };
+    });
 
-    // Safety timeout — never stay stuck loading beyond 5s
-    const timeout = setTimeout(resolveLoading, 5000);
-
-    // Listen for auth state changes (INITIAL_SESSION fires first with current session)
+    // Step 2: Listen for subsequent auth changes (sign in / sign out / token refresh)
+    // IMPORTANT: Do NOT await anything inside this callback — it causes deadlocks
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return;
+      (event, newSession) => {
+        if (!mountedRef.current) return;
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        if (newSession?.user) {
-          await fetchProfile(newSession.user.id);
-        } else {
+
+        if (event === 'SIGNED_OUT') {
           setProfile(null);
           setRole(null);
+          setLoading(false);
+          return;
         }
-        // Resolve loading on INITIAL_SESSION or SIGNED_IN/OUT
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-          resolveLoading();
+
+        if (newSession?.user) {
+          // Fire-and-forget profile fetch — do NOT await here
+          fetchProfile(newSession.user.id).finally(() => {
+            if (mountedRef.current) setLoading(false);
+          });
         }
       }
     );
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       clearTimeout(timeout);
       subscription.unsubscribe();
     };

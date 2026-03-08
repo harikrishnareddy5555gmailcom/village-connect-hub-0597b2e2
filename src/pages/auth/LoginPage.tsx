@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Phone, Lock, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,19 +13,30 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, profile } = useAuth();
+  const { signIn, user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Once auth resolves and user is active, navigate away
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (profile?.status === 'pending') {
+        navigate('/pending-approval', { replace: true });
+      } else if (profile?.status === 'active') {
+        navigate('/feed', { replace: true });
+      }
+      // For banned/suspended the AuthGuard handles it
+    }
+  }, [authLoading, user, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     const { error } = await signIn(mobile, password);
+    setLoading(false);
     if (error) {
-      setLoading(false);
       toast.error('Invalid mobile number or password');
     }
-    // On success: AuthContext will fire onAuthStateChange → GuestGuard will redirect automatically.
-    // Do NOT call navigate() here — it races with AuthContext loading state.
+    // Navigation handled by the useEffect above once AuthContext resolves
   };
 
   return (
@@ -55,6 +66,7 @@ const LoginPage: React.FC = () => {
                   onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   className="pl-9"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -71,6 +83,7 @@ const LoginPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-9 pr-10"
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
