@@ -24,6 +24,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/feed', icon: <Home size={18} />, label: 'Home Feed', labelTe: 'హోమ్ ఫీడ్' },
+  { to: '/stats', icon: <BarChart3 size={18} />, label: 'Village Stats', labelTe: 'గ్రామ గణాంకాలు' },
   { to: '/discussions', icon: <MessageSquare size={18} />, label: 'Discussions', labelTe: 'చర్చలు' },
   { to: '/events', icon: <Calendar size={18} />, label: 'Events', labelTe: 'కార్యక్రమాలు' },
   { to: '/complaints', icon: <AlertTriangle size={18} />, label: 'Complaints', labelTe: 'ఫిర్యాదులు' },
