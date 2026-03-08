@@ -1,15 +1,16 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Home, Users, Bell, Settings, MessageSquare,
+  Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
-  Shield, LogOut, ChevronDown, MapPin, BarChart3,
+  LogOut, MapPin, BarChart3,
   Menu, X
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import villageConnectLogo from '@/assets/village-connect-logo.png';
 import { cn } from '@/lib/utils';
+import NotificationsBell from '@/components/NotificationsBell';
 
 interface NavItem {
   to: string;
@@ -68,10 +69,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
               <p className="text-xs text-sidebar-foreground/70 truncate">{currentVillage.name}</p>
             )}
           </div>
-          {mobile && (
+          {mobile ? (
             <button onClick={onClose} className="ml-auto text-sidebar-foreground/70 hover:text-sidebar-foreground">
               <X size={18} />
             </button>
+          ) : (
+            <div className="ml-auto">
+              <NotificationsBell />
+            </div>
           )}
         </div>
       </div>
@@ -191,7 +196,8 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             <Menu size={22} />
           </button>
           <img src={villageConnectLogo} alt="" className="w-7 h-7" />
-          <span className="font-bold text-sm text-foreground">Village Connect</span>
+          <span className="font-bold text-sm text-foreground flex-1">Village Connect</span>
+          <NotificationsBell />
         </header>
 
         {/* Page Content */}
