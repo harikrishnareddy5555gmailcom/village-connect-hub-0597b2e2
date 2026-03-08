@@ -103,6 +103,37 @@ const MapPage: React.FC = () => {
   const [pendingLat, setPendingLat] = useState<number | null>(null);
   const [pendingLng, setPendingLng] = useState<number | null>(null);
 
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
+  const [flyTrigger, setFlyTrigger] = useState(0);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+    setNearMeLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLat(pos.coords.latitude);
+        setUserLng(pos.coords.longitude);
+        setFlyTrigger(t => t + 1);
+        setNearMeLoading(false);
+        toast.success('Showing your current location');
+      },
+      (err) => {
+        setNearMeLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          toast.error('Location permission denied. Please allow location access.');
+        } else {
+          toast.error('Unable to retrieve your location');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   const lat = Number(currentVillage?.latitude) || DEFAULT_LAT;
   const lng = Number(currentVillage?.longitude) || DEFAULT_LNG;
 
