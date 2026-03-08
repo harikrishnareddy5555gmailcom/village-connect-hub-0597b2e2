@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   MapPin, Plus, X, Loader2, Pencil, Trash2, CheckCircle,
-  XCircle, Globe, Users, ToggleLeft, ToggleRight
+  XCircle, Globe, Users, ToggleLeft, ToggleRight, Navigation
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +15,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+// Fix Leaflet default icon in Vite
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 interface VillageForm {
   name: string;
@@ -31,6 +42,25 @@ const EMPTY_FORM: VillageForm = {
   description: '', theme_color: '#16a34a',
 };
 
+// Component to handle map clicks and recenter
+function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => { map.setView([lat, lng], 13); }, [lat, lng, map]);
+  return null;
+}
+
+const DEFAULT_LAT = 17.385;
+const DEFAULT_LNG = 78.4867;
+
 const VillageManagementPage: React.FC = () => {
   const { role } = useAuth();
   const queryClient = useQueryClient();
@@ -38,19 +68,31 @@ const VillageManagementPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<VillageForm>(EMPTY_FORM);
+  const [mapKey, setMapKey] = useState(0); // force re-mount map when form opens
 
   const isSuperAdmin = role === 'super_admin';
+
+  const pickedLat = form.latitude ? parseFloat(form.latitude) : null;
+  const pickedLng = form.longitude ? parseFloat(form.longitude) : null;
+  const mapCenter: [number, number] = [
+    pickedLat ?? DEFAULT_LAT,
+    pickedLng ?? DEFAULT_LNG,
+  ];
 
   const { data: villages = [], isLoading } = useQuery({
     queryKey: ['all-villages'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from('villages').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('villages').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(false); };
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setEditId(null);
+    setShowForm(false);
+  };
 
   const startEdit = (v: any) => {
     setEditId(v.id);
@@ -66,7 +108,24 @@ const VillageManagementPage: React.FC = () => {
       theme_color: v.theme_color ?? '#16a34a',
     });
     setShowForm(true);
+    setMapKey(k => k + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleMapPick = (lat: number, lng: number) => {
+    setForm(prev => ({
+      ...prev,
+      latitude: lat.toFixed(6),
+      longitude: lng.toFixed(6),
+    }));
+  };
+
+  const handleGeolocate = () => {
+    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => handleMapPick(pos.coords.latitude, pos.coords.longitude),
+      () => toast.error('Could not get your location'),
+    );
   };
 
   const saveMutation = useMutation({
@@ -86,10 +145,10 @@ const VillageManagementPage: React.FC = () => {
         theme_color: form.theme_color || '#16a34a',
       };
       if (editId) {
-        const { error } = await (supabase as any).from('villages').update(payload).eq('id', editId);
+        const { error } = await supabase.from('villages').update(payload).eq('id', editId);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from('villages').insert({ ...payload, is_active: true });
+        const { error } = await supabase.from('villages').insert({ ...payload, is_active: true });
         if (error) throw error;
       }
     },
@@ -104,7 +163,7 @@ const VillageManagementPage: React.FC = () => {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await (supabase as any).from('villages').update({ is_active }).eq('id', id);
+      const { error } = await supabase.from('villages').update({ is_active }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -116,7 +175,7 @@ const VillageManagementPage: React.FC = () => {
 
   const deleteVillage = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('villages').delete().eq('id', id);
+      const { error } = await supabase.from('villages').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -157,7 +216,11 @@ const VillageManagementPage: React.FC = () => {
             <p className="text-xs text-muted-foreground">Create, edit and manage all villages</p>
           </div>
         </div>
-        <Button size="sm" className="btn-primary-gradient" onClick={() => { resetForm(); setShowForm(!showForm); }}>
+        <Button size="sm" className="btn-primary-gradient" onClick={() => {
+          resetForm();
+          setMapKey(k => k + 1);
+          setShowForm(v => !v);
+        }}>
           {showForm && !editId ? <X size={14} className="mr-1" /> : <Plus size={14} className="mr-1" />}
           {showForm && !editId ? 'Cancel' : 'New Village'}
         </Button>
@@ -170,7 +233,8 @@ const VillageManagementPage: React.FC = () => {
             <h3 className="font-semibold text-foreground">{editId ? '✏️ Edit Village' : '➕ Create Village'}</h3>
             <button onClick={resetForm} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <Label className="text-sm">Village Name *</Label>
               <Input {...f('name')} placeholder="e.g. Varadayapalli" className="mt-1" />
@@ -203,26 +267,82 @@ const VillageManagementPage: React.FC = () => {
                 <Input value={form.theme_color} onChange={e => setForm(p => ({ ...p, theme_color: e.target.value }))} placeholder="#16a34a" className="flex-1" />
               </div>
             </div>
-            <div>
-              <Label className="text-sm">Latitude</Label>
-              <div className="relative mt-1">
-                <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input {...f('latitude')} type="number" step="any" placeholder="e.g. 14.4673" className="pl-8" />
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm">Longitude</Label>
-              <div className="relative mt-1">
-                <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input {...f('longitude')} type="number" step="any" placeholder="e.g. 78.8242" className="pl-8" />
-              </div>
-            </div>
             <div className="sm:col-span-2">
               <Label className="text-sm">Description</Label>
               <Textarea {...f('description')} placeholder="Brief description of the village..." className="mt-1 resize-none" rows={2} />
             </div>
           </div>
-          <div className="flex gap-3 mt-4">
+
+          {/* Interactive Map Picker */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-sm flex items-center gap-1.5">
+                <MapPin size={14} className="text-primary" />
+                Village Location — <span className="text-muted-foreground font-normal">click on the map to drop a pin</span>
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={handleGeolocate}
+              >
+                <Navigation size={12} className="mr-1" />
+                Use My Location
+              </Button>
+            </div>
+
+            {/* Coordinate readout */}
+            <div className="flex gap-2 mb-2">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Latitude</Label>
+                <Input
+                  value={form.latitude}
+                  onChange={e => setForm(p => ({ ...p, latitude: e.target.value }))}
+                  placeholder="e.g. 14.4673"
+                  className="mt-0.5 h-8 text-sm"
+                />
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground">Longitude</Label>
+                <Input
+                  value={form.longitude}
+                  onChange={e => setForm(p => ({ ...p, longitude: e.target.value }))}
+                  placeholder="e.g. 78.8242"
+                  className="mt-0.5 h-8 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl overflow-hidden border border-border" style={{ height: 280, position: 'relative' }}>
+              <MapContainer
+                key={mapKey}
+                center={mapCenter}
+                zoom={pickedLat ? 13 : 5}
+                style={{ width: '100%', height: '100%' }}
+                className="z-0"
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MapClickHandler onPick={handleMapPick} />
+                {pickedLat && pickedLng && (
+                  <>
+                    <RecenterMap lat={pickedLat} lng={pickedLng} />
+                    <Marker position={[pickedLat, pickedLng]} />
+                  </>
+                )}
+              </MapContainer>
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[1000] bg-background/90 backdrop-blur-sm border border-border rounded-full px-3 py-1 text-xs text-muted-foreground pointer-events-none shadow">
+                {pickedLat && pickedLng
+                  ? `📍 ${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)}`
+                  : '👆 Click anywhere on the map to set village location'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
             <Button className="btn-primary-gradient flex-1" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
               {editId ? 'Save Changes' : 'Create Village'}
