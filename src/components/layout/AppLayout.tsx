@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { to: '/projects', icon: <Briefcase size={18} />, label: 'Projects', labelTe: 'ప్రాజెక్టులు' },
   { to: '/teams', icon: <Users size={18} />, label: 'Teams', labelTe: 'బృందాలు' },
   { to: '/map', icon: <MapPin size={18} />, label: 'Village Map', labelTe: 'గ్రామ పటం' },
+  { to: '/donations', icon: <DollarSign size={18} />, label: 'Donations', labelTe: 'విరాళాలు' },
   { to: '/profile', icon: <Users size={18} />, label: 'My Profile', labelTe: 'నా ప్రొఫైల్' },
 ];
 
