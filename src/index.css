@@ -78,6 +78,64 @@
     --shadow-card: 0 2px 8px hsl(140 30% 15% / 0.08), 0 0 0 1px hsl(140 20% 87%);
   }
 
+  /* ── Dark Mode Tokens ───────────────────────────────────── */
+  .dark {
+    --background: 140 20% 7%;
+    --foreground: 120 15% 92%;
+
+    --card: 140 18% 10%;
+    --card-foreground: 120 15% 92%;
+
+    --popover: 140 18% 11%;
+    --popover-foreground: 120 15% 92%;
+
+    --primary: 142 60% 42%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 142 55% 52%;
+    --primary-dark: 142 70% 28%;
+
+    --secondary: 38 40% 18%;
+    --secondary-foreground: 38 60% 75%;
+
+    --muted: 140 15% 14%;
+    --muted-foreground: 140 12% 58%;
+
+    --accent: 45 85% 50%;
+    --accent-foreground: 40 80% 10%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 60% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 85% 48%;
+    --warning-foreground: 38 80% 10%;
+    --info: 210 75% 55%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 140 15% 18%;
+    --input: 140 15% 18%;
+    --ring: 142 60% 42%;
+
+    --sidebar-background: 140 22% 8%;
+    --sidebar-foreground: 120 20% 88%;
+    --sidebar-primary: 45 85% 50%;
+    --sidebar-primary-foreground: 40 80% 10%;
+    --sidebar-accent: 140 18% 13%;
+    --sidebar-accent-foreground: 120 20% 92%;
+    --sidebar-border: 140 18% 14%;
+    --sidebar-ring: 45 85% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(142 60% 38%), hsl(160 55% 30%));
+    --gradient-hero: linear-gradient(160deg, hsl(142 60% 25%) 0%, hsl(160 50% 18%) 50%, hsl(40 60% 25%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(140 18% 11%), hsl(140 20% 9%));
+    --gradient-accent: linear-gradient(135deg, hsl(45 85% 50%), hsl(38 80% 45%));
+
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.5);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.3), 0 0 0 1px hsl(140 15% 18%);
+  }
+
   * {
     @apply border-border;
   }

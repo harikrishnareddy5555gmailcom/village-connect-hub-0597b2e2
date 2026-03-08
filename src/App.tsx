@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { VillageProvider } from "@/contexts/VillageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
@@ -26,6 +27,7 @@ import TeamsPage from "@/pages/TeamsPage";
 import VillageManagementPage from "@/pages/admin/VillageManagementPage";
 import DonationsPage from "@/pages/DonationsPage";
 import MembersPage from "@/pages/MembersPage";
+import VillageStatsPage from "@/pages/VillageStatsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -128,6 +130,7 @@ function AppRoutes() {
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/donations" element={<DonationsPage />} />
         <Route path="/members" element={<MembersPage />} />
+        <Route path="/stats" element={<VillageStatsPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
@@ -151,11 +154,13 @@ const App = () => (
       <Toaster />
       <Sonner richColors position="top-right" />
       <BrowserRouter>
-        <AuthProvider>
-          <VillageProvider>
-            <AppRoutes />
-          </VillageProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <VillageProvider>
+              <AppRoutes />
+            </VillageProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -4,10 +4,11 @@ import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
   LogOut, MapPin, BarChart3, Globe,
-  Menu, X, DollarSign, BookUser
+  Menu, X, DollarSign, BookUser, Sun, Moon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import villageConnectLogo from '@/assets/village-connect-logo.png';
 import { cn } from '@/lib/utils';
 import NotificationsBell from '@/components/NotificationsBell';
@@ -23,6 +24,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: '/feed', icon: <Home size={18} />, label: 'Home Feed', labelTe: 'హోమ్ ఫీడ్' },
+  { to: '/stats', icon: <BarChart3 size={18} />, label: 'Village Stats', labelTe: 'గ్రామ గణాంకాలు' },
   { to: '/discussions', icon: <MessageSquare size={18} />, label: 'Discussions', labelTe: 'చర్చలు' },
   { to: '/events', icon: <Calendar size={18} />, label: 'Events', labelTe: 'కార్యక్రమాలు' },
   { to: '/complaints', icon: <AlertTriangle size={18} />, label: 'Complaints', labelTe: 'ఫిర్యాదులు' },
@@ -50,6 +52,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
   const { profile, role, signOut } = useAuth();
   const { currentVillage } = useVillage();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
 
@@ -147,7 +150,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
       </nav>
 
       {/* User Profile Footer */}
-      <div className="px-3 py-4 border-t border-sidebar-border">
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-sm font-medium"
+        >
+          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide opacity-50">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </span>
+        </button>
+
         {profile && (
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors">
             <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm flex-shrink-0">
@@ -173,6 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
 
 export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
   // Map page needs overflow-hidden so the map can fill the exact remaining height
@@ -207,6 +223,13 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           </button>
           <img src={villageConnectLogo} alt="" className="w-7 h-7" />
           <span className="font-bold text-sm text-foreground flex-1">Village Connect</span>
+          <button
+            onClick={toggleTheme}
+            className="text-foreground/70 hover:text-foreground p-1"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <NotificationsBell />
         </header>
 
