@@ -41,25 +41,44 @@ const UserManagementPage: React.FC = () => {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['all-users', filterStatus, currentVillage?.id],
-    enabled: !!currentVillage,
+    // Always fetch — don't block on currentVillage being ready
     queryFn: async () => {
+      // Super admin: fetch ALL profiles; others: filter by village
       let q = supabase
         .from('profiles')
         .select('*')
-        .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
+
+      if (!isSuperAdmin && currentVillage?.id) {
+        q = (q as any).eq('village_id', currentVillage.id);
+      } else if (currentVillage?.id) {
+        // Super admin still scopes to current village if one is set
+        q = (q as any).eq('village_id', currentVillage.id);
+      }
+
       if (filterStatus !== 'all') q = (q as any).eq('status', filterStatus);
       const { data: profiles, error } = await q;
       if (error) throw error;
 
+      const profileList = profiles ?? [];
+      if (profileList.length === 0) return [];
+
       const { data: roles } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('user_id', (profiles ?? []).map((p: any) => p.user_id));
+        .in('user_id', profileList.map((p: any) => p.user_id));
 
+      // Keep highest role per user
       const rolesMap: Record<string, string> = {};
-      (roles ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
-      return (profiles ?? []).map((p: any) => ({
+      const roleOrder: Record<string, number> = { super_admin: 1, admin: 2, moderator: 3, user: 4 };
+      (roles ?? []).forEach((r: any) => {
+        const existing = rolesMap[r.user_id];
+        if (!existing || (roleOrder[r.role] ?? 99) < (roleOrder[existing] ?? 99)) {
+          rolesMap[r.user_id] = r.role;
+        }
+      });
+
+      return profileList.map((p: any) => ({
         ...p,
         user_roles: rolesMap[p.user_id] ? [{ role: rolesMap[p.user_id] }] : [],
       }));
