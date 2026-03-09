@@ -378,10 +378,58 @@ export type Database = {
           },
         ]
       }
+      donation_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          image_urls: string[] | null
+          is_active: boolean
+          target_amount: number | null
+          title: string
+          updated_at: string
+          village_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          image_urls?: string[] | null
+          is_active?: boolean
+          target_amount?: number | null
+          title: string
+          updated_at?: string
+          village_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          image_urls?: string[] | null
+          is_active?: boolean
+          target_amount?: number | null
+          title?: string
+          updated_at?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donation_campaigns_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       donations: {
         Row: {
           added_by: string
           amount: number
+          campaign_id: string | null
           created_at: string
           currency: string
           date: string
@@ -390,13 +438,16 @@ export type Database = {
           id: string
           is_anonymous: boolean
           notes: string | null
+          payment_method: string
           project_id: string | null
+          proof_url: string | null
           updated_at: string
           village_id: string
         }
         Insert: {
           added_by: string
           amount: number
+          campaign_id?: string | null
           created_at?: string
           currency?: string
           date?: string
@@ -405,13 +456,16 @@ export type Database = {
           id?: string
           is_anonymous?: boolean
           notes?: string | null
+          payment_method?: string
           project_id?: string | null
+          proof_url?: string | null
           updated_at?: string
           village_id: string
         }
         Update: {
           added_by?: string
           amount?: number
+          campaign_id?: string | null
           created_at?: string
           currency?: string
           date?: string
@@ -420,7 +474,9 @@ export type Database = {
           id?: string
           is_anonymous?: boolean
           notes?: string | null
+          payment_method?: string
           project_id?: string | null
+          proof_url?: string | null
           updated_at?: string
           village_id?: string
         }
@@ -431,6 +487,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "donations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "donation_campaigns"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "donations_donor_id_fkey"
@@ -788,6 +851,51 @@ export type Database = {
           },
         ]
       }
+      memories: {
+        Row: {
+          author_id: string
+          caption: string | null
+          created_at: string
+          id: string
+          image_urls: string[]
+          location_tag: string | null
+          village_id: string
+        }
+        Insert: {
+          author_id: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_urls?: string[]
+          location_tag?: string | null
+          village_id: string
+        }
+        Update: {
+          author_id?: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_urls?: string[]
+          location_tag?: string | null
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memories_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "memories_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -825,6 +933,96 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          created_at: string
+          created_by: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          options: Json
+          question: string
+          updated_at: string
+          village_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          options?: Json
+          question: string
+          updated_at?: string
+          village_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          options?: Json
+          question?: string
+          updated_at?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "polls_village_id_fkey"
             columns: ["village_id"]
             isOneToOne: false
             referencedRelation: "villages"
@@ -904,9 +1102,12 @@ export type Database = {
           bio: string | null
           created_at: string
           full_name: string
+          gender: string | null
           id: string
           mobile_number: string | null
           occupation: string | null
+          show_email: boolean
+          show_mobile: boolean
           skills: string[] | null
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
@@ -918,9 +1119,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           full_name: string
+          gender?: string | null
           id?: string
           mobile_number?: string | null
           occupation?: string | null
+          show_email?: boolean
+          show_mobile?: boolean
           skills?: string[] | null
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
@@ -932,9 +1136,12 @@ export type Database = {
           bio?: string | null
           created_at?: string
           full_name?: string
+          gender?: string | null
           id?: string
           mobile_number?: string | null
           occupation?: string | null
+          show_email?: boolean
+          show_mobile?: boolean
           skills?: string[] | null
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
@@ -1267,11 +1474,13 @@ export type Database = {
           longitude: number | null
           name: string
           population: number | null
+          qr_code_url: string | null
           reset_via_email_enabled: boolean
           reset_via_otp_enabled: boolean
           state: string
           theme_color: string | null
           updated_at: string
+          upi_id: string | null
         }
         Insert: {
           banner_url?: string | null
@@ -1287,11 +1496,13 @@ export type Database = {
           longitude?: number | null
           name: string
           population?: number | null
+          qr_code_url?: string | null
           reset_via_email_enabled?: boolean
           reset_via_otp_enabled?: boolean
           state: string
           theme_color?: string | null
           updated_at?: string
+          upi_id?: string | null
         }
         Update: {
           banner_url?: string | null
@@ -1307,11 +1518,13 @@ export type Database = {
           longitude?: number | null
           name?: string
           population?: number | null
+          qr_code_url?: string | null
           reset_via_email_enabled?: boolean
           reset_via_otp_enabled?: boolean
           state?: string
           theme_color?: string | null
           updated_at?: string
+          upi_id?: string | null
         }
         Relationships: []
       }
