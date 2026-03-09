@@ -86,19 +86,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
 
       {/* Village Info */}
       {currentVillage && (
-        <div className="mx-3 my-3 px-3 py-2 bg-sidebar-accent rounded-lg">
+        <div className="mx-3 my-2 px-3 py-1.5 bg-sidebar-accent rounded-lg">
           <div className="flex items-center gap-2">
-            <MapPin size={13} className="text-sidebar-primary" />
-            <div>
-              <p className="text-xs font-semibold text-sidebar-foreground">{currentVillage.name}</p>
-              <p className="text-[10px] text-sidebar-foreground/60">{currentVillage.district}, {currentVillage.state}</p>
+            <MapPin size={12} className="text-sidebar-primary flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-sidebar-foreground truncate">{currentVillage.name}</p>
+              <p className="text-[10px] text-sidebar-foreground/60 truncate">{currentVillage.district}, {currentVillage.state}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-1 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => (
           <Link
             key={item.to}
