@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { format, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { writeAuditLog } from '@/lib/auditLog';
 
 interface Event {
   id: string;
@@ -34,7 +35,7 @@ interface Event {
 }
 
 const EventsPage: React.FC = () => {
-  const { user, role } = useAuth();
+  const { user, role, profile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
@@ -117,8 +118,18 @@ const EventsPage: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const ev = events.find(e => e.id === id);
       const { error } = await (supabase as any).from('events').delete().eq('id', id);
       if (error) throw error;
+      await writeAuditLog({
+        action_type: 'delete',
+        entity_type: 'event',
+        entity_id: id,
+        entity_name: ev?.title,
+        performed_by: user!.id,
+        performed_by_name: profile?.full_name,
+        village_id: currentVillage?.id,
+      });
     },
     onSuccess: () => {
       setDeleteEventId(null);

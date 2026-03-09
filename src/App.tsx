@@ -23,6 +23,7 @@ import DiscussionsPage from "@/pages/DiscussionsPage";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
+import AuditLogPage from "@/pages/admin/AuditLogPage";
 import NotFound from "@/pages/NotFound";
 import MapPage from "@/pages/MapPage";
 import TeamsPage from "@/pages/TeamsPage";
@@ -144,6 +145,7 @@ function AppRoutes() {
         <Route element={<AdminGuard />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
+          <Route path="/admin/audit" element={<AuditLogPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/villages" element={<VillageManagementPage />} />
         </Route>

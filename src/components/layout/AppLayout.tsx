@@ -4,7 +4,7 @@ import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
   LogOut, MapPin, BarChart3, Globe,
-  Menu, X, DollarSign, BookUser, Sun, Moon
+  Menu, X, DollarSign, BookUser, Sun, Moon, ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
@@ -40,6 +40,7 @@ const navItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { to: '/admin', icon: <BarChart3 size={18} />, label: 'Admin Dashboard', labelTe: 'అడ్మిన్ డాష్‌బోర్డ్', adminOnly: true },
   { to: '/admin/users', icon: <Users size={18} />, label: 'Manage Users', labelTe: 'యూజర్లు', adminOnly: true },
+  { to: '/admin/audit', icon: <ShieldAlert size={18} />, label: 'Audit Log', labelTe: 'ఆడిట్ లాగ్', adminOnly: true },
   { to: '/admin/villages', icon: <Globe size={18} />, label: 'Villages', labelTe: 'గ్రామాలు', superAdminOnly: true },
   { to: '/admin/settings', icon: <Settings size={18} />, label: 'Settings', labelTe: 'సెట్టింగ్స్', adminOnly: true },
 ];

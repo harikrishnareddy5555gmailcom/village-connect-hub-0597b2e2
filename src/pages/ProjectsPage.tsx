@@ -14,9 +14,15 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { writeAuditLog } from '@/lib/auditLog';
 
 const STATUS_CONFIG = {
   planned: { label: 'Planned', color: 'bg-muted text-muted-foreground border-border' },
@@ -301,7 +307,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatus
 
 // ---- Main Page ----
 const ProjectsPage: React.FC = () => {
-  const { user, role } = useAuth();
+  const { user, role, profile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
@@ -313,6 +319,7 @@ const ProjectsPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects', currentVillage?.id, filterStatus],
@@ -368,10 +375,21 @@ const ProjectsPage: React.FC = () => {
 
   const deleteProject = useMutation({
     mutationFn: async (id: string) => {
+      const proj = projects.find((p: any) => p.id === id);
       const { error } = await (supabase as any).from('projects').delete().eq('id', id);
       if (error) throw error;
+      await writeAuditLog({
+        action_type: 'delete',
+        entity_type: 'project',
+        entity_id: id,
+        entity_name: proj?.title,
+        performed_by: user!.id,
+        performed_by_name: profile?.full_name,
+        village_id: currentVillage?.id,
+      });
     },
     onSuccess: () => {
+      setDeleteProjectId(null);
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Project deleted');
     },
@@ -479,11 +497,34 @@ const ProjectsPage: React.FC = () => {
               isAdmin={isAdmin}
               onStatusChange={(status, progress) => updateProject.mutate({ id: p.id, status, progress })}
               onProgressChange={(progress) => updateProject.mutate({ id: p.id, progress })}
-              onDelete={() => deleteProject.mutate(p.id)}
+              onDelete={() => setDeleteProjectId(p.id)}
             />
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteProjectId} onOpenChange={open => !open && setDeleteProjectId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{projects.find((p: any) => p.id === deleteProjectId)?.title}". All updates and comments will be removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteProjectId && deleteProject.mutate(deleteProjectId)}
+              disabled={deleteProject.isPending}
+            >
+              {deleteProject.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

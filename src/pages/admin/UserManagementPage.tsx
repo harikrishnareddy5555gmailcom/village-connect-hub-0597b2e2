@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Users, Search, Ban, CheckCircle, Loader2, Trash2 } from 'lucide-react';
+import { Users, Search, Ban, CheckCircle, Loader2, Trash2, Key } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { writeAuditLog } from '@/lib/auditLog';
 
 const STATUS_COLOR: Record<string, string> = {
   active: 'bg-success/15 text-green-700 border-success/30',
@@ -25,7 +26,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const UserManagementPage: React.FC = () => {
-  const { role: myRole } = useAuth();
+  const { role: myRole, user: currentUser, profile: currentProfile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isSuperAdmin = myRole === 'super_admin';
@@ -33,12 +34,12 @@ const UserManagementPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['all-users', filterStatus, currentVillage?.id],
     enabled: !!currentVillage,
     queryFn: async () => {
-      // Fetch profiles
       let q = supabase
         .from('profiles')
         .select('*')
@@ -48,13 +49,11 @@ const UserManagementPage: React.FC = () => {
       const { data: profiles, error } = await q;
       if (error) throw error;
 
-      // Fetch all user_roles for this village in one query
       const { data: roles } = await supabase
         .from('user_roles')
         .select('user_id, role')
         .in('user_id', (profiles ?? []).map((p: any) => p.user_id));
 
-      // Merge roles into profiles
       const rolesMap: Record<string, string> = {};
       (roles ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
       return (profiles ?? []).map((p: any) => ({
@@ -65,9 +64,19 @@ const UserManagementPage: React.FC = () => {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
+    mutationFn: async ({ userId, status, userName }: { userId: string; status: string; userName?: string }) => {
       const { error } = await (supabase as any).from('profiles').update({ status }).eq('user_id', userId);
       if (error) throw error;
+      await writeAuditLog({
+        action_type: status === 'active' ? 'activate' : status,
+        entity_type: 'user',
+        entity_id: userId,
+        entity_name: userName,
+        performed_by: currentUser!.id,
+        performed_by_name: currentProfile?.full_name,
+        village_id: currentVillage?.id,
+        metadata: { new_status: status },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
@@ -77,7 +86,7 @@ const UserManagementPage: React.FC = () => {
   });
 
   const assignRole = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+    mutationFn: async ({ userId, role, userName }: { userId: string; role: string; userName?: string }) => {
       await (supabase as any).from('user_roles').delete().eq('user_id', userId);
       const { error } = await (supabase as any).from('user_roles').insert({
         user_id: userId,
@@ -85,6 +94,16 @@ const UserManagementPage: React.FC = () => {
         role,
       });
       if (error) throw error;
+      await writeAuditLog({
+        action_type: 'role_change',
+        entity_type: 'user',
+        entity_id: userId,
+        entity_name: userName,
+        performed_by: currentUser!.id,
+        performed_by_name: currentProfile?.full_name,
+        village_id: currentVillage?.id,
+        metadata: { new_role: role },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
@@ -94,11 +113,19 @@ const UserManagementPage: React.FC = () => {
   });
 
   const deleteUser = useMutation({
-    mutationFn: async (userId: string) => {
-      // Delete user_roles first, then profile
+    mutationFn: async ({ userId, userName }: { userId: string; userName?: string }) => {
       await (supabase as any).from('user_roles').delete().eq('user_id', userId);
       const { error } = await (supabase as any).from('profiles').delete().eq('user_id', userId);
       if (error) throw error;
+      await writeAuditLog({
+        action_type: 'delete',
+        entity_type: 'user',
+        entity_id: userId,
+        entity_name: userName,
+        performed_by: currentUser!.id,
+        performed_by_name: currentProfile?.full_name,
+        village_id: currentVillage?.id,
+      });
     },
     onSuccess: () => {
       setDeleteUserId(null);
@@ -108,6 +135,31 @@ const UserManagementPage: React.FC = () => {
     onError: () => toast.error('Failed to delete user'),
   });
 
+  const resetPassword = useMutation({
+    mutationFn: async ({ userId, userMobile, userName }: { userId: string; userMobile?: string; userName?: string }) => {
+      // Send password reset email via Supabase — constructs email from mobile
+      const email = `${userMobile}@villageconnect.app`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      await writeAuditLog({
+        action_type: 'password_reset',
+        entity_type: 'user',
+        entity_id: userId,
+        entity_name: userName,
+        performed_by: currentUser!.id,
+        performed_by_name: currentProfile?.full_name,
+        village_id: currentVillage?.id,
+      });
+    },
+    onSuccess: () => {
+      setResetUserId(null);
+      toast.success('Password reset link sent to user');
+    },
+    onError: (e: Error) => toast.error(`Reset failed: ${e.message}`),
+  });
+
   const filtered = (users as any[]).filter((u: any) => {
     if (!search) return true;
     return u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -115,6 +167,7 @@ const UserManagementPage: React.FC = () => {
   });
 
   const deleteTarget = filtered.find((u: any) => u.user_id === deleteUserId);
+  const resetTarget = filtered.find((u: any) => u.user_id === resetUserId);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -177,12 +230,12 @@ const UserManagementPage: React.FC = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                    <span className={`border rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[u.status] ?? STATUS_COLOR.pending}`}>
+                    <span className={cn(`border rounded-full px-2 py-0.5 text-xs font-medium`, STATUS_COLOR[u.status] ?? STATUS_COLOR.pending)}>
                       {u.status}
                     </span>
 
                     {isSuperAdmin && (
-                      <Select value={topRole} onValueChange={role => assignRole.mutate({ userId: u.user_id, role })}>
+                      <Select value={topRole} onValueChange={role => assignRole.mutate({ userId: u.user_id, role, userName: u.full_name })}>
                         <SelectTrigger className="h-7 text-xs w-[110px]">
                           <SelectValue />
                         </SelectTrigger>
@@ -198,22 +251,33 @@ const UserManagementPage: React.FC = () => {
                     <div className="flex gap-1">
                       {u.status !== 'active' && (
                         <Button size="sm" className="h-7 text-xs bg-success/90 hover:bg-success text-white"
-                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'active' })}>
+                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'active', userName: u.full_name })}>
                           <CheckCircle size={11} className="mr-1" />Activate
                         </Button>
                       )}
                       {u.status !== 'banned' && (
                         <Button size="sm" variant="outline" className="h-7 text-xs border-destructive text-destructive hover:bg-destructive/10"
-                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'banned' })}>
+                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'banned', userName: u.full_name })}>
                           <Ban size={11} className="mr-1" />Ban
                         </Button>
                       )}
                       {isSuperAdmin && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteUserId(u.user_id)}
-                          title="Delete user">
-                          <Trash2 size={13} />
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-info hover:bg-info/10"
+                            onClick={() => setResetUserId(u.user_id)}
+                            title="Send password reset"
+                          >
+                            <Key size={13} />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteUserId(u.user_id)}
+                            title="Delete user">
+                            <Trash2 size={13} />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -238,11 +302,38 @@ const UserManagementPage: React.FC = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteUserId && deleteUser.mutate(deleteUserId)}
+              onClick={() => deleteUserId && deleteUser.mutate({ userId: deleteUserId, userName: deleteTarget?.full_name })}
               disabled={deleteUser.isPending}
             >
               {deleteUser.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
               Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Password Reset Confirmation */}
+      <AlertDialog open={!!resetUserId} onOpenChange={open => !open && setResetUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Password Reset?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send a password reset link to <strong>{resetTarget?.full_name}</strong> ({resetTarget?.mobile_number}).
+              They will receive a link to set a new password.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => resetUserId && resetPassword.mutate({
+                userId: resetUserId,
+                userMobile: resetTarget?.mobile_number,
+                userName: resetTarget?.full_name,
+              })}
+              disabled={resetPassword.isPending}
+            >
+              {resetPassword.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Send Reset Link
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
