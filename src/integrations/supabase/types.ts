@@ -1220,6 +1220,8 @@ export type Database = {
           longitude: number | null
           name: string
           population: number | null
+          reset_via_email_enabled: boolean
+          reset_via_otp_enabled: boolean
           state: string
           theme_color: string | null
           updated_at: string
@@ -1238,6 +1240,8 @@ export type Database = {
           longitude?: number | null
           name: string
           population?: number | null
+          reset_via_email_enabled?: boolean
+          reset_via_otp_enabled?: boolean
           state: string
           theme_color?: string | null
           updated_at?: string
@@ -1256,6 +1260,8 @@ export type Database = {
           longitude?: number | null
           name?: string
           population?: number | null
+          reset_via_email_enabled?: boolean
+          reset_via_otp_enabled?: boolean
           state?: string
           theme_color?: string | null
           updated_at?: string
