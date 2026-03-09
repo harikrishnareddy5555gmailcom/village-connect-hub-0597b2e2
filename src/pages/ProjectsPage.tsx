@@ -497,11 +497,34 @@ const ProjectsPage: React.FC = () => {
               isAdmin={isAdmin}
               onStatusChange={(status, progress) => updateProject.mutate({ id: p.id, status, progress })}
               onProgressChange={(progress) => updateProject.mutate({ id: p.id, progress })}
-              onDelete={() => deleteProject.mutate(p.id)}
+              onDelete={() => setDeleteProjectId(p.id)}
             />
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteProjectId} onOpenChange={open => !open && setDeleteProjectId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{projects.find((p: any) => p.id === deleteProjectId)?.title}". All updates and comments will be removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteProjectId && deleteProject.mutate(deleteProjectId)}
+              disabled={deleteProject.isPending}
+            >
+              {deleteProject.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
