@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import {
   Building2, Plus, X, Phone, MapPin, Tag, Search, Loader2,
-  CheckCircle, Navigation, ExternalLink
+  CheckCircle, Navigation, ExternalLink, Map
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -344,6 +344,66 @@ const BusinessDirectoryPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* All Businesses Map */}
+      {!isLoading && businesses.length > 0 && (() => {
+        const mappedBizs = (businesses as any[]).filter((b: any) => b.latitude && b.longitude);
+        if (mappedBizs.length === 0) return null;
+        const centerLat = mappedBizs.reduce((s: number, b: any) => s + Number(b.latitude), 0) / mappedBizs.length;
+        const centerLng = mappedBizs.reduce((s: number, b: any) => s + Number(b.longitude), 0) / mappedBizs.length;
+        return (
+          <div className="vcp-card overflow-hidden mt-6">
+            {/* Header */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/40">
+              <Map size={15} className="text-primary" />
+              <span className="text-sm font-semibold text-foreground">Businesses on Map</span>
+              <span className="ml-auto text-xs text-muted-foreground">{mappedBizs.length} location{mappedBizs.length !== 1 ? 's' : ''} pinned</span>
+            </div>
+            <div style={{ height: 360, position: 'relative' }}>
+              <MapContainer
+                center={[centerLat, centerLng]}
+                zoom={14}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                scrollWheelZoom={false}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {mappedBizs.map((b: any) => (
+                  <Marker key={b.id} position={[Number(b.latitude), Number(b.longitude)]}>
+                    <Popup>
+                      <div style={{ minWidth: 140 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {b.name}
+                          {b.is_verified && <CheckCircle size={12} style={{ color: '#16a34a', flexShrink: 0 }} />}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{b.category}</div>
+                        {b.owner_name && <div style={{ fontSize: 11, color: '#6b7280' }}>{b.owner_name}</div>}
+                        {b.phone && (
+                          <a href={`tel:${b.phone}`} style={{ fontSize: 11, color: '#2563eb', display: 'block', marginTop: 4 }}>{b.phone}</a>
+                        )}
+                        {b.address && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{b.address}</div>}
+                        <a
+                          href={`https://www.google.com/maps?q=${b.latitude},${b.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 11, color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}
+                        >
+                          <ExternalLink size={10} />Open in Google Maps
+                        </a>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+              <div className="absolute bottom-2 right-2 z-[500] bg-background/80 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1 text-xs text-muted-foreground pointer-events-none shadow">
+                Click a pin to see business details
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
