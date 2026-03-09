@@ -86,19 +86,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
 
       {/* Village Info */}
       {currentVillage && (
-        <div className="mx-3 my-3 px-3 py-2 bg-sidebar-accent rounded-lg">
+        <div className="mx-3 my-2 px-3 py-1.5 bg-sidebar-accent rounded-lg">
           <div className="flex items-center gap-2">
-            <MapPin size={13} className="text-sidebar-primary" />
-            <div>
-              <p className="text-xs font-semibold text-sidebar-foreground">{currentVillage.name}</p>
-              <p className="text-[10px] text-sidebar-foreground/60">{currentVillage.district}, {currentVillage.state}</p>
+            <MapPin size={12} className="text-sidebar-primary flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-sidebar-foreground truncate">{currentVillage.name}</p>
+              <p className="text-[10px] text-sidebar-foreground/60 truncate">{currentVillage.district}, {currentVillage.state}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-2 py-1 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => (
           <Link
             key={item.to}
@@ -146,22 +146,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
       </nav>
 
       {/* User Profile Footer */}
-      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
+      <div className="px-2 py-2 border-t border-sidebar-border space-y-1">
         {/* Dark Mode Toggle */}
         <button
           onClick={toggleTheme}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-sm font-medium"
+          className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-xs font-medium"
         >
-          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          {theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}
           <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-          <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide opacity-50">
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </span>
         </button>
 
         {profile && (
-          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors">
-            <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-sm flex-shrink-0">
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-sidebar-accent transition-colors">
+            <div className="w-7 h-7 rounded-full bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold text-xs flex-shrink-0">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -173,7 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobile, onClose }) => {
               <p className="text-[10px] text-sidebar-foreground/60 capitalize">{role?.replace('_', ' ') ?? 'User'}</p>
             </div>
             <button onClick={handleSignOut} title="Sign Out" className="text-sidebar-foreground/50 hover:text-sidebar-foreground">
-              <LogOut size={15} />
+              <LogOut size={14} />
             </button>
           </div>
         )}
