@@ -432,8 +432,32 @@ const BusinessDirectoryPage: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteBusinessId} onOpenChange={open => !open && setDeleteBusinessId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Business?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this business listing from the directory. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteBusinessId && deleteBusiness.mutate(deleteBusinessId)}
+              disabled={deleteBusiness.isPending}
+            >
+              {deleteBusiness.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 export default BusinessDirectoryPage;
+
