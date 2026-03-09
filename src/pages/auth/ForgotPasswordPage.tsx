@@ -16,7 +16,7 @@ const ForgotPasswordPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('email');
 
   // ── Email tab state ──────────────────────────────────────────────────────────
-  const [emailMobile, setEmailMobile] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -29,15 +29,17 @@ const ForgotPasswordPage: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // ── Email flow ───────────────────────────────────────────────────────────────
+  // User enters their registered email (the real one used at signup,
+  // OR the mobile-based fallback email if no real email was set).
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (emailMobile.length < 10) {
-      toast.error('Enter a valid 10-digit mobile number');
+    const trimmed = emailInput.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error('Enter a valid email address');
       return;
     }
     setEmailLoading(true);
-    const fakeEmail = `${emailMobile}@villageconnect.app`;
-    const { error } = await supabase.auth.resetPasswordForEmail(fakeEmail, {
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setEmailLoading(false);
@@ -168,38 +170,39 @@ const ForgotPasswordPage: React.FC = () => {
                 <CheckCircle2 size={48} className="mx-auto mb-4 text-primary" />
                 <h3 className="text-lg font-bold text-foreground mb-2">Reset Link Sent!</h3>
                 <p className="text-muted-foreground text-sm mb-1">
-                  A password reset link has been sent to the email associated with{' '}
-                  <span className="font-semibold text-foreground">+91 {emailMobile}</span>.
+                  A password reset link has been sent to{' '}
+                  <span className="font-semibold text-foreground">{emailInput}</span>.
                 </p>
                 <p className="text-xs text-muted-foreground mb-6">
                   Check your inbox and click the link to set a new password.
                 </p>
-                <Button variant="outline" className="w-full" onClick={() => { setEmailSent(false); setEmailMobile(''); }}>
-                  Try a different number
+                <Button variant="outline" className="w-full" onClick={() => { setEmailSent(false); setEmailInput(''); }}>
+                  Try a different email
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleEmailSubmit} className="space-y-5">
                 <div>
-                  <Label htmlFor="email-mobile" className="text-sm font-medium">Registered Mobile Number</Label>
+                  <Label htmlFor="reset-email" className="text-sm font-medium">Registered Email Address</Label>
                   <div className="relative mt-1.5">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium select-none">+91</span>
+                    <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      id="email-mobile"
-                      type="tel"
-                      placeholder="10-digit mobile number"
-                      value={emailMobile}
-                      onChange={(e) => setEmailMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      className="pl-12"
+                      id="reset-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      className="pl-9"
                       required
                       disabled={emailLoading}
+                      autoComplete="email"
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    A reset link will be sent to the email linked to this account.
+                    Enter the email address you used when registering your account.
                   </p>
                 </div>
-                <Button type="submit" className="w-full btn-primary-gradient" disabled={emailLoading || emailMobile.length < 10}>
+                <Button type="submit" className="w-full btn-primary-gradient" disabled={emailLoading || !emailInput.trim()}>
                   {emailLoading
                     ? <><Loader2 size={16} className="mr-2 animate-spin" />Sending...</>
                     : <><Mail size={16} className="mr-2" />Send Reset Link</>
