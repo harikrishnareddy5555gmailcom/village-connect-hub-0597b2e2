@@ -106,7 +106,7 @@ const MemoriesPage: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('memories' as any).delete().eq('id', id);
+      const { error } = await (supabase as any).from('memories').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['memories'] }); toast.success('Memory removed'); },
