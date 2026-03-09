@@ -35,7 +35,7 @@ interface Event {
 }
 
 const EventsPage: React.FC = () => {
-  const { user, role } = useAuth();
+  const { user, role, profile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
