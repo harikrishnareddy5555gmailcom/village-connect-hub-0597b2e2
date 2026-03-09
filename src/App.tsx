@@ -31,6 +31,9 @@ import VillageManagementPage from "@/pages/admin/VillageManagementPage";
 import DonationsPage from "@/pages/DonationsPage";
 import MembersPage from "@/pages/MembersPage";
 import VillageStatsPage from "@/pages/VillageStatsPage";
+import MemoriesPage from "@/pages/MemoriesPage";
+import PollsPage from "@/pages/PollsPage";
+import VillagePaymentSettingsPage from "@/pages/admin/VillagePaymentSettingsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({

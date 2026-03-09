@@ -4,7 +4,8 @@ import {
   Home, Users, Settings, MessageSquare,
   Briefcase, Calendar, AlertTriangle, Building2,
   LogOut, MapPin, BarChart3, Globe,
-  Menu, X, DollarSign, BookUser, Sun, Moon, ShieldAlert
+  Menu, X, DollarSign, BookUser, Sun, Moon, ShieldAlert,
+  BookHeart, Vote, CreditCard
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
@@ -25,6 +26,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/feed', icon: <Home size={18} />, label: 'Home Feed', labelTe: 'హోమ్ ఫీడ్' },
   { to: '/stats', icon: <BarChart3 size={18} />, label: 'Village Stats', labelTe: 'గ్రామ గణాంకాలు' },
+  { to: '/memories', icon: <BookHeart size={18} />, label: 'Memories', labelTe: 'జ్ఞాపకాలు' },
+  { to: '/polls', icon: <Vote size={18} />, label: 'Polls', labelTe: 'ఓటింగ్' },
   { to: '/discussions', icon: <MessageSquare size={18} />, label: 'Discussions', labelTe: 'చర్చలు' },
   { to: '/events', icon: <Calendar size={18} />, label: 'Events', labelTe: 'కార్యక్రమాలు' },
   { to: '/complaints', icon: <AlertTriangle size={18} />, label: 'Complaints', labelTe: 'ఫిర్యాదులు' },
@@ -41,6 +44,7 @@ const adminNavItems: NavItem[] = [
   { to: '/admin', icon: <BarChart3 size={18} />, label: 'Admin Dashboard', labelTe: 'అడ్మిన్ డాష్‌బోర్డ్', adminOnly: true },
   { to: '/admin/users', icon: <Users size={18} />, label: 'Manage Users', labelTe: 'యూజర్లు', adminOnly: true },
   { to: '/admin/audit', icon: <ShieldAlert size={18} />, label: 'Audit Log', labelTe: 'ఆడిట్ లాగ్', adminOnly: true },
+  { to: '/admin/payment', icon: <CreditCard size={18} />, label: 'Payment Settings', labelTe: 'పేమెంట్', adminOnly: true },
   { to: '/admin/villages', icon: <Globe size={18} />, label: 'Villages', labelTe: 'గ్రామాలు', superAdminOnly: true },
   { to: '/admin/settings', icon: <Settings size={18} />, label: 'Settings', labelTe: 'సెట్టింగ్స్', adminOnly: true },
 ];
