@@ -145,6 +145,7 @@ function AppRoutes() {
         <Route element={<AdminGuard />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
+          <Route path="/admin/audit" element={<AuditLogPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/villages" element={<VillageManagementPage />} />
         </Route>
