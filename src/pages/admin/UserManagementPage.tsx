@@ -38,15 +38,29 @@ const UserManagementPage: React.FC = () => {
     queryKey: ['all-users', filterStatus, currentVillage?.id],
     enabled: !!currentVillage,
     queryFn: async () => {
+      // Fetch profiles
       let q = supabase
         .from('profiles')
-        .select('*, user_roles(role)')
+        .select('*')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
       if (filterStatus !== 'all') q = (q as any).eq('status', filterStatus);
-      const { data, error } = await q;
+      const { data: profiles, error } = await q;
       if (error) throw error;
-      return data ?? [];
+
+      // Fetch all user_roles for this village in one query
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', (profiles ?? []).map((p: any) => p.user_id));
+
+      // Merge roles into profiles
+      const rolesMap: Record<string, string> = {};
+      (roles ?? []).forEach((r: any) => { rolesMap[r.user_id] = r.role; });
+      return (profiles ?? []).map((p: any) => ({
+        ...p,
+        user_roles: rolesMap[p.user_id] ? [{ role: rolesMap[p.user_id] }] : [],
+      }));
     },
   });
 
