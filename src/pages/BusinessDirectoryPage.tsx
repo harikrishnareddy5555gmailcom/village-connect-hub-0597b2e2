@@ -56,6 +56,7 @@ const BusinessDirectoryPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
+  const [deleteBusinessId, setDeleteBusinessId] = useState<string | null>(null);
 
   // Form fields
   const [name, setName] = useState('');
