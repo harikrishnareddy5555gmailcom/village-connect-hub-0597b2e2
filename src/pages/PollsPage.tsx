@@ -129,7 +129,7 @@ const PollsPage: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('polls' as any).delete().eq('id', id);
+      const { error } = await (supabase as any).from('polls').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['polls'] }); toast.success('Poll deleted'); },
