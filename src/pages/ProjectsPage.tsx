@@ -375,10 +375,21 @@ const ProjectsPage: React.FC = () => {
 
   const deleteProject = useMutation({
     mutationFn: async (id: string) => {
+      const proj = projects.find((p: any) => p.id === id);
       const { error } = await (supabase as any).from('projects').delete().eq('id', id);
       if (error) throw error;
+      await writeAuditLog({
+        action_type: 'delete',
+        entity_type: 'project',
+        entity_id: id,
+        entity_name: proj?.title,
+        performed_by: user!.id,
+        performed_by_name: profile?.full_name,
+        village_id: currentVillage?.id,
+      });
     },
     onSuccess: () => {
+      setDeleteProjectId(null);
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Project deleted');
     },
