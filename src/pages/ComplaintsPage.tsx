@@ -82,6 +82,7 @@ const ComplaintsPage: React.FC = () => {
   const [pinLng, setPinLng] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [deleteComplaintId, setDeleteComplaintId] = useState<string | null>(null);
 
   const mapCenterLat = currentVillage?.latitude ? Number(currentVillage.latitude) : DEFAULT_LAT;
   const mapCenterLng = currentVillage?.longitude ? Number(currentVillage.longitude) : DEFAULT_LNG;
