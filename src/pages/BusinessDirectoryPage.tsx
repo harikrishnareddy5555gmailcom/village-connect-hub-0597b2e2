@@ -8,13 +8,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import {
   Building2, Plus, X, Phone, MapPin, Tag, Search, Loader2,
-  CheckCircle, Navigation, ExternalLink, Map
+  CheckCircle, Navigation, ExternalLink, Map, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +56,7 @@ const BusinessDirectoryPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState('all');
+  const [deleteBusinessId, setDeleteBusinessId] = useState<string | null>(null);
 
   // Form fields
   const [name, setName] = useState('');
@@ -124,6 +130,20 @@ const BusinessDirectoryPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['businesses'] });
       toast.success('Business verified!');
     },
+  });
+
+  const deleteBusiness = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('businesses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeleteBusinessId(null);
+      queryClient.invalidateQueries({ queryKey: ['businesses'] });
+      queryClient.invalidateQueries({ queryKey: ['map-businesses'] });
+      toast.success('Business removed');
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = (businesses as any[]).filter((b: any) => {
@@ -334,11 +354,19 @@ const BusinessDirectoryPage: React.FC = () => {
                   </a>
                 )}
               </div>
-              {isAdmin && !b.is_verified && (
-                <Button size="sm" variant="outline" className="mt-3 w-full text-xs h-7 border-success text-success hover:bg-success/10"
-                  onClick={() => verifyBusiness.mutate(b.id)}>
-                  <CheckCircle size={12} className="mr-1" />Verify Business
-                </Button>
+              {isAdmin && (
+                <div className="flex gap-2 mt-3">
+                  {!b.is_verified && (
+                    <Button size="sm" variant="outline" className="flex-1 text-xs h-7 border-success text-success hover:bg-success/10"
+                      onClick={() => verifyBusiness.mutate(b.id)}>
+                      <CheckCircle size={12} className="mr-1" />Verify
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="text-xs h-7 border-destructive text-destructive hover:bg-destructive/10 px-2"
+                    onClick={() => setDeleteBusinessId(b.id)}>
+                    <Trash2 size={12} />
+                  </Button>
+                </div>
               )}
             </div>
           ))}
@@ -404,8 +432,32 @@ const BusinessDirectoryPage: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteBusinessId} onOpenChange={open => !open && setDeleteBusinessId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Business?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this business listing from the directory. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteBusinessId && deleteBusiness.mutate(deleteBusinessId)}
+              disabled={deleteBusiness.isPending}
+            >
+              {deleteBusiness.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 export default BusinessDirectoryPage;
+

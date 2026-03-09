@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
 import {
   AlertTriangle, Plus, X, Loader2, CheckCircle2, Clock, Circle,
-  MapPin, ChevronDown, ChevronUp, Navigation, Map
+  MapPin, ChevronDown, ChevronUp, Navigation, Map, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,12 +15,18 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
 
 // Fix Leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -76,6 +82,7 @@ const ComplaintsPage: React.FC = () => {
   const [pinLng, setPinLng] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [deleteComplaintId, setDeleteComplaintId] = useState<string | null>(null);
 
   const mapCenterLat = currentVillage?.latitude ? Number(currentVillage.latitude) : DEFAULT_LAT;
   const mapCenterLng = currentVillage?.longitude ? Number(currentVillage.longitude) : DEFAULT_LNG;
@@ -145,6 +152,19 @@ const ComplaintsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['complaints'] });
       toast.success('Status updated & reporter notified');
     },
+  });
+
+  const deleteComplaintMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('complaints').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeleteComplaintId(null);
+      queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      toast.success('Complaint deleted');
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const handleUseMyLocation = () => {
@@ -395,6 +415,16 @@ const ComplaintsPage: React.FC = () => {
                             ))}
                           </div>
                         )}
+                        {isAdmin && (
+                          <div className="pt-2 border-t border-border mt-2">
+                            <button
+                              onClick={() => setDeleteComplaintId(c.id)}
+                              className="flex items-center gap-1 text-xs text-destructive hover:underline"
+                            >
+                              <Trash2 size={12} /> Delete complaint
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -404,6 +434,29 @@ const ComplaintsPage: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteComplaintId} onOpenChange={open => !open && setDeleteComplaintId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Complaint?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this complaint. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteComplaintId && deleteComplaintMutation.mutate(deleteComplaintId)}
+              disabled={deleteComplaintMutation.isPending}
+            >
+              {deleteComplaintMutation.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -3,26 +3,33 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { MessageSquare, Plus, X, Send, Loader2, ChevronDown, ChevronUp, ThumbsUp } from 'lucide-react';
+import { MessageSquare, Plus, X, Send, Loader2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const DiscussionsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
+  const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [deleteDiscussionId, setDeleteDiscussionId] = useState<string | null>(null);
 
   const { data: discussions = [], isLoading } = useQuery({
     queryKey: ['discussions', currentVillage?.id],
@@ -88,6 +95,23 @@ const DiscussionsPage: React.FC = () => {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteDiscussion = useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase as any).from('discussion_replies').delete().eq('discussion_id', id);
+      const { error } = await (supabase as any).from('discussions').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeleteDiscussionId(null);
+      if (expanded === deleteDiscussionId) setExpanded(null);
+      queryClient.invalidateQueries({ queryKey: ['discussions'] });
+      toast.success('Discussion deleted');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteTarget = (discussions as any[]).find((d: any) => d.id === deleteDiscussionId);
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {/* Header */}
@@ -131,7 +155,7 @@ const DiscussionsPage: React.FC = () => {
       {/* List */}
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 size={24} className="animate-spin text-primary" /></div>
-      ) : discussions.length === 0 ? (
+      ) : (discussions as any[]).length === 0 ? (
         <div className="text-center py-16">
           <div className="text-5xl mb-3">💬</div>
           <p className="font-medium text-foreground">No discussions yet</p>
@@ -139,7 +163,7 @@ const DiscussionsPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {discussions.map((d: any) => {
+          {(discussions as any[]).map((d: any) => {
             const isOpen = expanded === d.id;
             const replyCount = d.discussion_replies?.length ?? 0;
             return (
@@ -158,6 +182,15 @@ const DiscussionsPage: React.FC = () => {
                           {d.profiles?.full_name} · {formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}
                         </p>
                       </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setDeleteDiscussionId(d.id)}
+                          className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
+                          title="Delete discussion"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                     {d.body && <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{d.body}</p>}
 
@@ -210,6 +243,29 @@ const DiscussionsPage: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteDiscussionId} onOpenChange={open => !open && setDeleteDiscussionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Discussion?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently delete "<strong>{deleteTarget?.title}</strong>" and all its replies. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteDiscussionId && deleteDiscussion.mutate(deleteDiscussionId)}
+              disabled={deleteDiscussion.isPending}
+            >
+              {deleteDiscussion.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

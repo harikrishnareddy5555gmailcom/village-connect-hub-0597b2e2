@@ -3,11 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Users, Search, Shield, Ban, CheckCircle, ChevronDown, Loader2 } from 'lucide-react';
+import { Users, Search, Ban, CheckCircle, Loader2, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -27,18 +32,20 @@ const UserManagementPage: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['all-users', filterStatus, currentVillage?.id],
     enabled: !!currentVillage,
     queryFn: async () => {
-      let q = (supabase as any)
+      let q = supabase
         .from('profiles')
         .select('*, user_roles(role)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
-      if (filterStatus !== 'all') q = q.eq('status', filterStatus);
-      const { data } = await q;
+      if (filterStatus !== 'all') q = (q as any).eq('status', filterStatus);
+      const { data, error } = await q;
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -57,7 +64,6 @@ const UserManagementPage: React.FC = () => {
 
   const assignRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      // Remove existing roles first
       await (supabase as any).from('user_roles').delete().eq('user_id', userId);
       const { error } = await (supabase as any).from('user_roles').insert({
         user_id: userId,
@@ -73,11 +79,28 @@ const UserManagementPage: React.FC = () => {
     onError: () => toast.error('Failed to assign role'),
   });
 
-  const filtered = users.filter((u: any) => {
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      // Delete user_roles first, then profile
+      await (supabase as any).from('user_roles').delete().eq('user_id', userId);
+      const { error } = await (supabase as any).from('profiles').delete().eq('user_id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeleteUserId(null);
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      toast.success('User removed from village');
+    },
+    onError: () => toast.error('Failed to delete user'),
+  });
+
+  const filtered = (users as any[]).filter((u: any) => {
     if (!search) return true;
     return u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.mobile_number?.includes(search);
   });
+
+  const deleteTarget = filtered.find((u: any) => u.user_id === deleteUserId);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -88,7 +111,7 @@ const UserManagementPage: React.FC = () => {
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">User Management</h1>
-          <p className="text-xs text-muted-foreground">Manage all village members</p>
+          <p className="text-xs text-muted-foreground">Manage all village members · {(users as any[]).length} total</p>
         </div>
       </div>
 
@@ -119,12 +142,13 @@ const UserManagementPage: React.FC = () => {
         <div className="text-center py-16">
           <div className="text-5xl mb-3">👥</div>
           <p className="font-medium text-foreground">No users found</p>
+          <p className="text-sm text-muted-foreground mt-1">Try a different filter or search term</p>
         </div>
       ) : (
         <div className="vcp-card overflow-hidden">
           <div className="divide-y divide-border">
             {filtered.map((u: any) => {
-              const topRole = u.user_roles?.[0]?.role ?? 'user';
+              const topRole = (u.user_roles as any[])?.[0]?.role ?? 'user';
               return (
                 <div key={u.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
                   <Avatar className="w-10 h-10 flex-shrink-0">
@@ -134,7 +158,9 @@ const UserManagementPage: React.FC = () => {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-foreground truncate">{u.full_name}</p>
-                    <p className="text-xs text-muted-foreground">📱 {u.mobile_number ?? '—'} · Joined {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}</p>
+                    <p className="text-xs text-muted-foreground">
+                      📱 {u.mobile_number ?? '—'} · Joined {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                     <span className={`border rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[u.status] ?? STATUS_COLOR.pending}`}>
@@ -168,6 +194,13 @@ const UserManagementPage: React.FC = () => {
                           <Ban size={11} className="mr-1" />Ban
                         </Button>
                       )}
+                      {isSuperAdmin && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteUserId(u.user_id)}
+                          title="Delete user">
+                          <Trash2 size={13} />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -176,6 +209,30 @@ const UserManagementPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteUserId} onOpenChange={open => !open && setDeleteUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove <strong>{deleteTarget?.full_name}</strong> from the village.
+              Their posts and activity will remain but they won't be able to log in. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteUserId && deleteUser.mutate(deleteUserId)}
+              disabled={deleteUser.isPending}
+            >
+              {deleteUser.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
