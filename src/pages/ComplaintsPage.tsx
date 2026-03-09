@@ -154,6 +154,19 @@ const ComplaintsPage: React.FC = () => {
     },
   });
 
+  const deleteComplaintMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('complaints').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeleteComplaintId(null);
+      queryClient.invalidateQueries({ queryKey: ['complaints'] });
+      toast.success('Complaint deleted');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return toast.error('Geolocation not supported');
     navigator.geolocation.getCurrentPosition(
