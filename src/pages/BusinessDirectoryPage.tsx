@@ -354,11 +354,19 @@ const BusinessDirectoryPage: React.FC = () => {
                   </a>
                 )}
               </div>
-              {isAdmin && !b.is_verified && (
-                <Button size="sm" variant="outline" className="mt-3 w-full text-xs h-7 border-success text-success hover:bg-success/10"
-                  onClick={() => verifyBusiness.mutate(b.id)}>
-                  <CheckCircle size={12} className="mr-1" />Verify Business
-                </Button>
+              {isAdmin && (
+                <div className="flex gap-2 mt-3">
+                  {!b.is_verified && (
+                    <Button size="sm" variant="outline" className="flex-1 text-xs h-7 border-success text-success hover:bg-success/10"
+                      onClick={() => verifyBusiness.mutate(b.id)}>
+                      <CheckCircle size={12} className="mr-1" />Verify
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" className="text-xs h-7 border-destructive text-destructive hover:bg-destructive/10 px-2"
+                    onClick={() => setDeleteBusinessId(b.id)}>
+                    <Trash2 size={12} />
+                  </Button>
+                </div>
               )}
             </div>
           ))}
