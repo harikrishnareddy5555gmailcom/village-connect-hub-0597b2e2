@@ -141,6 +141,8 @@ function AppRoutes() {
         <Route path="/donations" element={<DonationsPage />} />
         <Route path="/members" element={<MembersPage />} />
         <Route path="/stats" element={<VillageStatsPage />} />
+        <Route path="/memories" element={<MemoriesPage />} />
+        <Route path="/polls" element={<PollsPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
@@ -151,6 +153,7 @@ function AppRoutes() {
           <Route path="/admin/audit" element={<AuditLogPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/villages" element={<VillageManagementPage />} />
+          <Route path="/admin/payment" element={<VillagePaymentSettingsPage />} />
         </Route>
       </Route>
 
