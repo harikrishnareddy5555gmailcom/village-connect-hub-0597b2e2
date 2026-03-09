@@ -89,7 +89,7 @@ const PollsPage: React.FC = () => {
       const validOptions = options.filter(o => o.trim());
       if (!question.trim()) throw new Error('Question is required');
       if (validOptions.length < 2) throw new Error('At least 2 options required');
-      const { error } = await (supabase as any).from('polls's').insert({
+      const { error } = await (supabase as any).from('polls').insert({
         village_id: currentVillage!.id,
         created_by: user!.id,
         question: question.trim(),
