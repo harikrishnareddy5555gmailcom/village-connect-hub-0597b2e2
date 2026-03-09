@@ -132,6 +132,20 @@ const BusinessDirectoryPage: React.FC = () => {
     },
   });
 
+  const deleteBusiness = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('businesses').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDeleteBusinessId(null);
+      queryClient.invalidateQueries({ queryKey: ['businesses'] });
+      queryClient.invalidateQueries({ queryKey: ['map-businesses'] });
+      toast.success('Business removed');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const filtered = (businesses as any[]).filter((b: any) => {
     const matchSearch = !search || b.name?.toLowerCase().includes(search.toLowerCase()) ||
       b.description?.toLowerCase().includes(search.toLowerCase());
