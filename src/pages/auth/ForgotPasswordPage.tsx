@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Phone, Mail, Loader2, ArrowLeft, CheckCircle2, MessageSquare, KeyRound } from 'lucide-react';
+import { Phone, Mail, Loader2, ArrowLeft, CheckCircle2, MessageSquare, KeyRound, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,39 @@ type OtpStep = 'enter_mobile' | 'enter_otp';
 
 const ForgotPasswordPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('email');
+
+  // ── Village recovery method toggles ─────────────────────────────────────────
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [otpEnabled, setOtpEnabled] = useState(true);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    // Load village recovery settings
+    const fetchSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from('villages')
+          .select('*')
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+        if (data) {
+          const emailOn = (data as any).reset_via_email_enabled ?? true;
+          const otpOn = (data as any).reset_via_otp_enabled ?? true;
+          setEmailEnabled(emailOn);
+          setOtpEnabled(otpOn);
+          // Auto-switch if current tab is disabled
+          if (!emailOn && otpOn) setTab('otp');
+          else if (emailOn && !otpOn) setTab('email');
+        }
+      } catch {
+        // silently fall back to both enabled
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // ── Email tab state ──────────────────────────────────────────────────────────
   const [emailInput, setEmailInput] = useState('');
@@ -29,8 +62,6 @@ const ForgotPasswordPage: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // ── Email flow ───────────────────────────────────────────────────────────────
-  // User enters their registered email (the real one used at signup,
-  // OR the mobile-based fallback email if no real email was set).
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = emailInput.trim();
@@ -62,7 +93,6 @@ const ForgotPasswordPage: React.FC = () => {
     const { error } = await supabase.auth.signInWithOtp({ phone });
     setOtpLoading(false);
     if (error) {
-      // If phone auth not enabled, show helpful message
       if (error.message?.toLowerCase().includes('phone') || error.message?.toLowerCase().includes('sms')) {
         toast.error('SMS provider not configured yet. Use the email link option or contact admin.');
       } else {
@@ -91,7 +121,6 @@ const ForgotPasswordPage: React.FC = () => {
     } else {
       setOtpVerified(true);
       toast.success('OTP verified! You can now reset your password.');
-      // Session is now active — navigate to reset-password
       setTimeout(() => { window.location.href = '/reset-password'; }, 1500);
     }
   };
@@ -119,6 +148,44 @@ const ForgotPasswordPage: React.FC = () => {
     }
   };
 
+  if (loadingSettings) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 size={28} className="animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Both methods disabled (shouldn't happen due to admin guard, but handle gracefully)
+  if (!emailEnabled && !otpEnabled) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <img src={varadayapalliLogo} alt="Varadayapalli" className="w-20 h-20 mx-auto mb-4 drop-shadow-lg" />
+            <h1 className="text-3xl font-bold text-foreground">వరదయపల్లి</h1>
+            <p className="text-base text-muted-foreground font-medium">Varadayapalli</p>
+          </div>
+          <div className="vcp-card p-8 text-center">
+            <AlertCircle size={48} className="mx-auto mb-4 text-warning" />
+            <h2 className="text-lg font-bold text-foreground mb-2">Password Reset Unavailable</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Password reset has been temporarily disabled by the admin. Please contact your village admin for assistance.
+            </p>
+            <Link to="/login">
+              <Button variant="outline" className="w-full">
+                <ArrowLeft size={14} className="mr-2" />
+                Back to Sign In
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const bothEnabled = emailEnabled && otpEnabled;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
@@ -132,39 +199,43 @@ const ForgotPasswordPage: React.FC = () => {
         <div className="vcp-card p-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-foreground mb-1">Forgot Password?</h2>
-            <p className="text-muted-foreground text-sm">Choose how you'd like to reset your password.</p>
+            <p className="text-muted-foreground text-sm">
+              {bothEnabled ? "Choose how you'd like to reset your password." : 'Reset your password below.'}
+            </p>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="grid grid-cols-2 gap-2 mb-6 p-1 bg-muted rounded-lg">
-            <button
-              onClick={() => setTab('email')}
-              className={cn(
-                'flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all',
-                tab === 'email'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Mail size={15} />
-              Via Email Link
-            </button>
-            <button
-              onClick={() => setTab('otp')}
-              className={cn(
-                'flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all',
-                tab === 'otp'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <MessageSquare size={15} />
-              Via Mobile OTP
-            </button>
-          </div>
+          {/* Tab Switcher — only show if both methods are enabled */}
+          {bothEnabled && (
+            <div className="grid grid-cols-2 gap-2 mb-6 p-1 bg-muted rounded-lg">
+              <button
+                onClick={() => setTab('email')}
+                className={cn(
+                  'flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all',
+                  tab === 'email'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Mail size={15} />
+                Via Email Link
+              </button>
+              <button
+                onClick={() => setTab('otp')}
+                className={cn(
+                  'flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all',
+                  tab === 'otp'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <MessageSquare size={15} />
+                Via Mobile OTP
+              </button>
+            </div>
+          )}
 
           {/* ── Email Tab ── */}
-          {tab === 'email' && (
+          {(tab === 'email' || (!bothEnabled && emailEnabled)) && (
             emailSent ? (
               <div className="text-center py-4">
                 <CheckCircle2 size={48} className="mx-auto mb-4 text-primary" />
@@ -213,7 +284,7 @@ const ForgotPasswordPage: React.FC = () => {
           )}
 
           {/* ── OTP Tab ── */}
-          {tab === 'otp' && (
+          {(tab === 'otp' || (!bothEnabled && otpEnabled)) && (
             otpVerified ? (
               <div className="text-center py-4">
                 <CheckCircle2 size={48} className="mx-auto mb-4 text-primary" />
@@ -245,7 +316,7 @@ const ForgotPasswordPage: React.FC = () => {
                 <div className="flex items-start gap-2.5 p-3 rounded-lg bg-muted/60 border border-border">
                   <Phone size={14} className="mt-0.5 shrink-0 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">Requires SMS provider.</span> Add your Twilio or MSG91 credentials to the <code className="bg-muted px-1 rounded text-[11px]">.env</code> file to enable SMS OTP delivery.
+                    <span className="font-medium text-foreground">Requires SMS provider.</span> Add your Twilio or MSG91 credentials to enable SMS OTP delivery.
                   </p>
                 </div>
 
