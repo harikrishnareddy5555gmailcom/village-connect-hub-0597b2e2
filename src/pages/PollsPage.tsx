@@ -47,8 +47,8 @@ const PollsPage: React.FC = () => {
   const { data: polls = [], isLoading } = useQuery({
     queryKey: ['polls', currentVillage?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('polls' as any)
+      const { data, error } = await (supabase as any)
+        .from('polls')
         .select('*, profiles!polls_created_by_fkey(full_name, avatar_url)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
@@ -61,8 +61,8 @@ const PollsPage: React.FC = () => {
   const { data: myVotes = [] } = useQuery({
     queryKey: ['my-votes', currentVillage?.id, user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('poll_votes' as any)
+      const { data } = await (supabase as any)
+        .from('poll_votes')
         .select('poll_id, option_index')
         .eq('user_id', user!.id);
       return (data ?? []) as PollVote[];
@@ -75,8 +75,8 @@ const PollsPage: React.FC = () => {
     queryFn: async () => {
       const pollIds = polls.map(p => p.id);
       if (!pollIds.length) return [];
-      const { data } = await supabase
-        .from('poll_votes' as any)
+      const { data } = await (supabase as any)
+        .from('poll_votes')
         .select('poll_id, option_index, user_id')
         .in('poll_id', pollIds);
       return (data ?? []) as PollVote[];

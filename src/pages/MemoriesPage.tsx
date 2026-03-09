@@ -39,8 +39,8 @@ const MemoriesPage: React.FC = () => {
   const { data: memories = [], isLoading } = useQuery({
     queryKey: ['memories', currentVillage?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('memories' as any)
+      const { data, error } = await (supabase as any)
+        .from('memories')
         .select('*, profiles!memories_author_id_fkey(full_name, avatar_url)')
         .eq('village_id', currentVillage!.id)
         .order('created_at', { ascending: false });
