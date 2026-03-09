@@ -395,6 +395,16 @@ const ComplaintsPage: React.FC = () => {
                             ))}
                           </div>
                         )}
+                        {isAdmin && (
+                          <div className="pt-2 border-t border-border mt-2">
+                            <button
+                              onClick={() => setDeleteComplaintId(c.id)}
+                              className="flex items-center gap-1 text-xs text-destructive hover:underline"
+                            >
+                              <Trash2 size={12} /> Delete complaint
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -404,6 +414,29 @@ const ComplaintsPage: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteComplaintId} onOpenChange={open => !open && setDeleteComplaintId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Complaint?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this complaint. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteComplaintId && deleteComplaintMutation.mutate(deleteComplaintId)}
+              disabled={deleteComplaintMutation.isPending}
+            >
+              {deleteComplaintMutation.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
