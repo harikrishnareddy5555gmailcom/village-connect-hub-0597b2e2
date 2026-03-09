@@ -16,7 +16,7 @@ const ForgotPasswordPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('email');
 
   // ── Email tab state ──────────────────────────────────────────────────────────
-  const [emailMobile, setEmailMobile] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -29,15 +29,17 @@ const ForgotPasswordPage: React.FC = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // ── Email flow ───────────────────────────────────────────────────────────────
+  // User enters their registered email (the real one used at signup,
+  // OR the mobile-based fallback email if no real email was set).
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (emailMobile.length < 10) {
-      toast.error('Enter a valid 10-digit mobile number');
+    const trimmed = emailInput.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error('Enter a valid email address');
       return;
     }
     setEmailLoading(true);
-    const fakeEmail = `${emailMobile}@villageconnect.app`;
-    const { error } = await supabase.auth.resetPasswordForEmail(fakeEmail, {
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setEmailLoading(false);
