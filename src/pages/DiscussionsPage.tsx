@@ -19,15 +19,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const DiscussionsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
+  const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [deleteDiscussionId, setDeleteDiscussionId] = useState<string | null>(null);
 
   const { data: discussions = [], isLoading } = useQuery({
     queryKey: ['discussions', currentVillage?.id],
