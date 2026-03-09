@@ -307,7 +307,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project: p, isAdmin, onStatus
 
 // ---- Main Page ----
 const ProjectsPage: React.FC = () => {
-  const { user, role } = useAuth();
+  const { user, role, profile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
@@ -319,6 +319,7 @@ const ProjectsPage: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects', currentVillage?.id, filterStatus],
