@@ -83,7 +83,7 @@ const MemoriesPage: React.FC = () => {
       setUploading(true);
       const imageUrls = await uploadImages();
       setUploading(false);
-      const { error } = await supabase.from('memories' as any).insert({
+      const { error } = await (supabase as any).from('memories').insert({
         village_id: currentVillage!.id,
         author_id: user!.id,
         caption: caption.trim() || null,
