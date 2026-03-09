@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Camera, Phone, Briefcase, Edit2, Save, X, Loader2, KeyRound, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,14 @@ const ProfilePage: React.FC = () => {
   const [occupation, setOccupation] = useState(profile?.occupation ?? '');
   const [uploading, setUploading] = useState(false);
 
-  const queryClient = useQueryClient();
+  // Password change state
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -36,6 +43,33 @@ const ProfilePage: React.FC = () => {
     },
     onError: () => toast.error('Failed to update profile'),
   });
+
+  const passwordMutation = useMutation({
+    mutationFn: async () => {
+      // Re-authenticate by signing in again with current password
+      const email = `${profile!.mobile_number}@villageconnect.app`;
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: currentPw });
+      if (signInErr) throw new Error('Current password is incorrect');
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Password changed successfully!');
+      setPwOpen(false);
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    },
+    onError: (err: Error) => toast.error(err.message ?? 'Failed to change password'),
+  });
+
+  const handlePasswordSubmit = () => {
+    if (!currentPw) return toast.error('Enter your current password');
+    if (newPw.length < 6) return toast.error('New password must be at least 6 characters');
+    if (newPw !== confirmPw) return toast.error('Passwords do not match');
+    if (newPw === currentPw) return toast.error('New password must differ from current password');
+    passwordMutation.mutate();
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,6 +214,132 @@ const ProfilePage: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      {/* Change Password */}
+      <div className="vcp-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <KeyRound size={16} className="text-primary" />
+            <h3 className="font-semibold text-foreground">Change Password</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPwOpen(v => !v);
+              setCurrentPw('');
+              setNewPw('');
+              setConfirmPw('');
+            }}
+          >
+            {pwOpen ? <><X size={14} className="mr-1" />Cancel</> : <><Edit2 size={14} className="mr-1" />Change</>}
+          </Button>
+        </div>
+
+        {pwOpen && (
+          <div className="space-y-4">
+            {/* Current password */}
+            <div>
+              <Label className="text-sm">Current Password</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showCurrent ? 'text' : 'password'}
+                  value={currentPw}
+                  onChange={e => setCurrentPw(e.target.value)}
+                  placeholder="Enter current password"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowCurrent(v => !v)}
+                >
+                  {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {/* New password */}
+            <div>
+              <Label className="text-sm">New Password</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showNew ? 'text' : 'password'}
+                  value={newPw}
+                  onChange={e => setNewPw(e.target.value)}
+                  placeholder="Min. 6 characters"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowNew(v => !v)}
+                >
+                  {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {/* Strength indicator */}
+              {newPw.length > 0 && (
+                <div className="mt-1.5 flex gap-1">
+                  {[1, 2, 3, 4].map(i => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        newPw.length >= i * 3
+                          ? i <= 1 ? 'bg-destructive' : i <= 2 ? 'bg-warning' : i <= 3 ? 'bg-info' : 'bg-success'
+                          : 'bg-muted'
+                      }`}
+                    />
+                  ))}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    {newPw.length < 4 ? 'Weak' : newPw.length < 7 ? 'Fair' : newPw.length < 10 ? 'Good' : 'Strong'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm password */}
+            <div>
+              <Label className="text-sm">Confirm New Password</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirmPw}
+                  onChange={e => setConfirmPw(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className={`pr-10 ${confirmPw && confirmPw !== newPw ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowConfirm(v => !v)}
+                >
+                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {confirmPw && confirmPw !== newPw && (
+                <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+              )}
+              {confirmPw && confirmPw === newPw && newPw.length >= 6 && (
+                <p className="text-xs text-success mt-1 flex items-center gap-1"><ShieldCheck size={12} /> Passwords match</p>
+              )}
+            </div>
+
+            <Button
+              className="btn-primary-gradient"
+              onClick={handlePasswordSubmit}
+              disabled={passwordMutation.isPending}
+            >
+              {passwordMutation.isPending ? <Loader2 size={14} className="mr-2 animate-spin" /> : <KeyRound size={14} className="mr-2" />}
+              Update Password
+            </Button>
+          </div>
+        )}
+
+        {!pwOpen && (
+          <p className="text-sm text-muted-foreground">Keep your account secure by using a strong, unique password.</p>
         )}
       </div>
 
