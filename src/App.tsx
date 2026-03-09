@@ -31,6 +31,9 @@ import VillageManagementPage from "@/pages/admin/VillageManagementPage";
 import DonationsPage from "@/pages/DonationsPage";
 import MembersPage from "@/pages/MembersPage";
 import VillageStatsPage from "@/pages/VillageStatsPage";
+import MemoriesPage from "@/pages/MemoriesPage";
+import PollsPage from "@/pages/PollsPage";
+import VillagePaymentSettingsPage from "@/pages/admin/VillagePaymentSettingsPage";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -138,6 +141,8 @@ function AppRoutes() {
         <Route path="/donations" element={<DonationsPage />} />
         <Route path="/members" element={<MembersPage />} />
         <Route path="/stats" element={<VillageStatsPage />} />
+        <Route path="/memories" element={<MemoriesPage />} />
+        <Route path="/polls" element={<PollsPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}
@@ -148,6 +153,7 @@ function AppRoutes() {
           <Route path="/admin/audit" element={<AuditLogPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
           <Route path="/admin/villages" element={<VillageManagementPage />} />
+          <Route path="/admin/payment" element={<VillagePaymentSettingsPage />} />
         </Route>
       </Route>
 

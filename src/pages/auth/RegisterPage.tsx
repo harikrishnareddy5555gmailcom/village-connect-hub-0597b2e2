@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Phone, Lock, User, Loader2, MapPin, Mail } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, User, Loader2, MapPin, Mail, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ const RegisterPage: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    gender: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,6 +49,7 @@ const RegisterPage: React.FC = () => {
       mobileNumber: form.mobileNumber,
       email: form.email.trim() || undefined,
       password: form.password,
+      gender: form.gender || undefined,
     });
     setLoading(false);
     if (error) {
@@ -116,6 +118,37 @@ const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Gender */}
+              <div>
+                <Label className="text-sm font-medium">
+                  Gender
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <div className="flex gap-2 mt-1.5">
+                  {['Male', 'Female', 'Other'].map(g => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, gender: p.gender === g ? '' : g }))}
+                      disabled={loading}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                        form.gender === g
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >
+                      <UserCircle size={14} />
+                      {g}
+                    </button>
+                  ))}
+                </div>
+                {form.gender === 'Female' && (
+                  <p className="text-xs text-info mt-1.5 bg-info/10 px-3 py-1.5 rounded-lg">
+                    🔒 Female members' mobile number & contact details are kept private by default for safety.
+                  </p>
+                )}
+              </div>
+
               {/* Mobile Number */}
               <div>
                 <Label htmlFor="mobile" className="text-sm font-medium">Mobile Number <span className="text-destructive">*</span></Label>
@@ -153,7 +186,6 @@ const RegisterPage: React.FC = () => {
                     disabled={loading}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Reset links will be sent here if you forget your password</p>
               </div>
 
               {/* Password */}
