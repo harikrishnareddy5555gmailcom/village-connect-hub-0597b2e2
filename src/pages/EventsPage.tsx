@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { format, isPast } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { writeAuditLog } from '@/lib/auditLog';
 
 interface Event {
   id: string;
