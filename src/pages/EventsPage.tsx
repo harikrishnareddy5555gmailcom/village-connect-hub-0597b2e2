@@ -118,8 +118,18 @@ const EventsPage: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const ev = events.find(e => e.id === id);
       const { error } = await (supabase as any).from('events').delete().eq('id', id);
       if (error) throw error;
+      await writeAuditLog({
+        action_type: 'delete',
+        entity_type: 'event',
+        entity_id: id,
+        entity_name: ev?.title,
+        performed_by: user!.id,
+        performed_by_name: profile?.full_name,
+        village_id: currentVillage?.id,
+      });
     },
     onSuccess: () => {
       setDeleteEventId(null);
