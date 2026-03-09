@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, Phone, Briefcase, User, Edit2, Save, X, Loader2 } from 'lucide-react';
+import { Camera, Phone, Briefcase, Edit2, Save, X, Loader2, KeyRound, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
