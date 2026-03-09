@@ -6,11 +6,12 @@ import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Move, Trash2, X } from 'lucide-react';
+import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Trash2, Mail, MessageSquare, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 // Fix Leaflet icons in Vite
@@ -73,6 +74,14 @@ const SettingsPage: React.FC = () => {
   const [latInput, setLatInput] = useState(currentVillage?.latitude?.toString() ?? '');
   const [lngInput, setLngInput] = useState(currentVillage?.longitude?.toString() ?? '');
 
+  // Password reset method toggles (cast to any since types not yet regenerated)
+  const [resetEmailEnabled, setResetEmailEnabled] = useState<boolean>(
+    (currentVillage as any)?.reset_via_email_enabled ?? true
+  );
+  const [resetOtpEnabled, setResetOtpEnabled] = useState<boolean>(
+    (currentVillage as any)?.reset_via_otp_enabled ?? true
+  );
+
   useEffect(() => {
     if (currentVillage) {
       setName(currentVillage.name);
@@ -87,6 +96,8 @@ const SettingsPage: React.FC = () => {
       setLatInput(la?.toString() ?? '');
       setLngInput(lo?.toString() ?? '');
       setMapKey(k => k + 1);
+      setResetEmailEnabled((currentVillage as any).reset_via_email_enabled ?? true);
+      setResetOtpEnabled((currentVillage as any).reset_via_otp_enabled ?? true);
     }
   }, [currentVillage?.id]);
 
@@ -174,6 +185,29 @@ const SettingsPage: React.FC = () => {
     onError: () => toast.error('Failed to save location'),
   });
 
+  const saveResetMethods = useMutation({
+    mutationFn: async () => {
+      if (!currentVillage) return;
+      if (!resetEmailEnabled && !resetOtpEnabled) {
+        throw new Error('At least one password reset method must be enabled.');
+      }
+      const { error } = await (supabase as any)
+        .from('villages')
+        .update({
+          reset_via_email_enabled: resetEmailEnabled,
+          reset_via_otp_enabled: resetOtpEnabled,
+        })
+        .eq('id', currentVillage.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await refreshVillage?.();
+      queryClient.invalidateQueries({ queryKey: ['villages'] });
+      toast.success('Password reset settings saved!');
+    },
+    onError: (e: any) => toast.error(e?.message || 'Failed to save reset settings'),
+  });
+
   if (!currentVillage) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -259,6 +293,88 @@ const SettingsPage: React.FC = () => {
             <p className="text-xs text-muted-foreground italic">Only Super Admin can edit village settings.</p>
           )}
         </div>
+      </div>
+
+      {/* ── Password Recovery Methods ── (Super Admin only) */}
+      <div className="vcp-card p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldCheck size={16} className="text-primary" />
+          <h2 className="font-semibold text-foreground">Password Recovery Methods</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Control which recovery options are shown to users on the "Forgot Password" page. At least one must stay enabled.
+        </p>
+
+        {!isSuperAdmin ? (
+          <p className="text-xs text-muted-foreground italic">Only Super Admin can change recovery settings.</p>
+        ) : (
+          <div className="space-y-4">
+            {/* Email Link Toggle */}
+            <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-muted/40 border border-border">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Mail size={15} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Via Email Link</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sends a password reset link to the user's registered email address.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={resetEmailEnabled}
+                onCheckedChange={(val) => {
+                  if (!val && !resetOtpEnabled) {
+                    toast.error('At least one reset method must be enabled');
+                    return;
+                  }
+                  setResetEmailEnabled(val);
+                }}
+                className="flex-shrink-0 mt-1"
+              />
+            </div>
+
+            {/* Mobile OTP Toggle */}
+            <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-muted/40 border border-border">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MessageSquare size={15} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Via Mobile OTP</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sends a 6-digit OTP to the user's registered mobile number via SMS.
+                    Requires an SMS provider (Twilio / MSG91) to be configured.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={resetOtpEnabled}
+                onCheckedChange={(val) => {
+                  if (!val && !resetEmailEnabled) {
+                    toast.error('At least one reset method must be enabled');
+                    return;
+                  }
+                  setResetOtpEnabled(val);
+                }}
+                className="flex-shrink-0 mt-1"
+              />
+            </div>
+
+            {/* Save button */}
+            <Button
+              className="btn-primary-gradient"
+              onClick={() => saveResetMethods.mutate()}
+              disabled={saveResetMethods.isPending}
+            >
+              {saveResetMethods.isPending
+                ? <><Loader2 size={14} className="mr-2 animate-spin" />Saving...</>
+                : <><Save size={14} className="mr-2" />Save Recovery Settings</>
+              }
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Village Location Map — editable by admin + super_admin */}
