@@ -344,6 +344,66 @@ const BusinessDirectoryPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* All Businesses Map */}
+      {!isLoading && businesses.length > 0 && (() => {
+        const mappedBizs = (businesses as any[]).filter((b: any) => b.latitude && b.longitude);
+        if (mappedBizs.length === 0) return null;
+        const centerLat = mappedBizs.reduce((s: number, b: any) => s + Number(b.latitude), 0) / mappedBizs.length;
+        const centerLng = mappedBizs.reduce((s: number, b: any) => s + Number(b.longitude), 0) / mappedBizs.length;
+        return (
+          <div className="vcp-card overflow-hidden mt-6">
+            {/* Header */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/40">
+              <Map size={15} className="text-primary" />
+              <span className="text-sm font-semibold text-foreground">Businesses on Map</span>
+              <span className="ml-auto text-xs text-muted-foreground">{mappedBizs.length} location{mappedBizs.length !== 1 ? 's' : ''} pinned</span>
+            </div>
+            <div style={{ height: 360, position: 'relative' }}>
+              <MapContainer
+                center={[centerLat, centerLng]}
+                zoom={14}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                scrollWheelZoom={false}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {mappedBizs.map((b: any) => (
+                  <Marker key={b.id} position={[Number(b.latitude), Number(b.longitude)]}>
+                    <Popup>
+                      <div className="min-w-[140px]">
+                        <div className="font-semibold text-sm flex items-center gap-1">
+                          {b.name}
+                          {b.is_verified && <CheckCircle size={12} className="text-green-600 flex-shrink-0" />}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">{b.category}</div>
+                        {b.owner_name && <div className="text-xs text-gray-500">{b.owner_name}</div>}
+                        {b.phone && (
+                          <a href={`tel:${b.phone}`} className="text-xs text-blue-600 hover:underline block mt-1">{b.phone}</a>
+                        )}
+                        {b.address && <div className="text-xs text-gray-500 mt-0.5">{b.address}</div>}
+                        <a
+                          href={`https://www.google.com/maps?q=${b.latitude},${b.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                        >
+                          <ExternalLink size={10} />Open in Google Maps
+                        </a>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+              <div className="absolute bottom-2 right-2 z-[500] bg-background/80 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1 text-xs text-muted-foreground pointer-events-none shadow">
+                Click a pin to see business details
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
