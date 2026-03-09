@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Users, Search, Ban, CheckCircle, Loader2, Trash2, Key } from 'lucide-react';
+import { Users, Search, Ban, CheckCircle, Loader2, Trash2, Key, PauseCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +19,10 @@ import { cn } from '@/lib/utils';
 import { writeAuditLog } from '@/lib/auditLog';
 
 const STATUS_COLOR: Record<string, string> = {
-  active: 'bg-success/15 text-green-700 border-success/30',
-  pending: 'bg-warning/15 text-yellow-700 border-warning/30',
-  banned: 'bg-destructive/15 text-red-700 border-destructive/30',
-  suspended: 'bg-muted text-muted-foreground border-border',
+  active:    'bg-success/15 text-green-700 border-success/30',
+  pending:   'bg-warning/15 text-yellow-700 border-warning/30',
+  banned:    'bg-destructive/15 text-red-700 border-destructive/30',
+  suspended: 'bg-orange-500/15 text-orange-700 border-orange-500/30',
 };
 
 const UserManagementPage: React.FC = () => {
@@ -31,10 +31,13 @@ const UserManagementPage: React.FC = () => {
   const queryClient = useQueryClient();
   const isSuperAdmin = myRole === 'super_admin';
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch]             = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
-  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetUserId,  setResetUserId]  = useState<string | null>(null);
+  // confirm dialogs for suspend/ban
+  const [suspendUserId, setSuspendUserId] = useState<string | null>(null);
+  const [banUserId,     setBanUserId]     = useState<string | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['all-users', filterStatus, currentVillage?.id],
@@ -79,6 +82,8 @@ const UserManagementPage: React.FC = () => {
       });
     },
     onSuccess: () => {
+      setSuspendUserId(null);
+      setBanUserId(null);
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
       toast.success('User status updated');
     },
@@ -137,7 +142,6 @@ const UserManagementPage: React.FC = () => {
 
   const resetPassword = useMutation({
     mutationFn: async ({ userId, userMobile, userName }: { userId: string; userMobile?: string; userName?: string }) => {
-      // Send password reset email via Supabase — constructs email from mobile
       const email = `${userMobile}@villageconnect.app`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -166,8 +170,17 @@ const UserManagementPage: React.FC = () => {
       u.mobile_number?.includes(search);
   });
 
-  const deleteTarget = filtered.find((u: any) => u.user_id === deleteUserId);
-  const resetTarget = filtered.find((u: any) => u.user_id === resetUserId);
+  const deleteTarget  = filtered.find((u: any) => u.user_id === deleteUserId);
+  const resetTarget   = filtered.find((u: any) => u.user_id === resetUserId);
+  const suspendTarget = filtered.find((u: any) => u.user_id === suspendUserId);
+  const banTarget     = filtered.find((u: any) => u.user_id === banUserId);
+
+  // Admins (non-super) cannot act on super_admin users
+  const canActOn = (u: any) => {
+    if (isSuperAdmin) return true;
+    const topRole = (u.user_roles as any[])?.[0]?.role;
+    return topRole !== 'super_admin' && topRole !== 'admin';
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -215,7 +228,10 @@ const UserManagementPage: React.FC = () => {
         <div className="vcp-card overflow-hidden">
           <div className="divide-y divide-border">
             {filtered.map((u: any) => {
-              const topRole = (u.user_roles as any[])?.[0]?.role ?? 'user';
+              const topRole    = (u.user_roles as any[])?.[0]?.role ?? 'user';
+              const actionable = canActOn(u);
+              const isSelf     = u.user_id === currentUser?.id;
+
               return (
                 <div key={u.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
                   <Avatar className="w-10 h-10 flex-shrink-0">
@@ -229,11 +245,14 @@ const UserManagementPage: React.FC = () => {
                       📱 {u.mobile_number ?? '—'} · Joined {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
                     </p>
                   </div>
+
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
-                    <span className={cn(`border rounded-full px-2 py-0.5 text-xs font-medium`, STATUS_COLOR[u.status] ?? STATUS_COLOR.pending)}>
+                    {/* Status badge */}
+                    <span className={cn('border rounded-full px-2 py-0.5 text-xs font-medium', STATUS_COLOR[u.status] ?? STATUS_COLOR.pending)}>
                       {u.status}
                     </span>
 
+                    {/* Role selector — super admin only */}
                     {isSuperAdmin && (
                       <Select value={topRole} onValueChange={role => assignRole.mutate({ userId: u.user_id, role, userName: u.full_name })}>
                         <SelectTrigger className="h-7 text-xs w-[110px]">
@@ -248,20 +267,47 @@ const UserManagementPage: React.FC = () => {
                       </Select>
                     )}
 
+                    {/* Action buttons */}
                     <div className="flex gap-1">
-                      {u.status !== 'active' && (
-                        <Button size="sm" className="h-7 text-xs bg-success/90 hover:bg-success text-white"
-                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'active', userName: u.full_name })}>
+                      {/* Activate */}
+                      {actionable && !isSelf && u.status !== 'active' && (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-success/90 hover:bg-success text-white"
+                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'active', userName: u.full_name })}
+                        >
                           <CheckCircle size={11} className="mr-1" />Activate
                         </Button>
                       )}
-                      {u.status !== 'banned' && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs border-destructive text-destructive hover:bg-destructive/10"
-                          onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'banned', userName: u.full_name })}>
+
+                      {/* Suspend — shown when user is active or banned */}
+                      {actionable && !isSelf && u.status !== 'suspended' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-orange-500 text-orange-600 hover:bg-orange-500/10"
+                          onClick={() => setSuspendUserId(u.user_id)}
+                          title="Temporarily suspend user"
+                        >
+                          <PauseCircle size={11} className="mr-1" />Suspend
+                        </Button>
+                      )}
+
+                      {/* Ban — shown when not already banned */}
+                      {actionable && !isSelf && u.status !== 'banned' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-destructive text-destructive hover:bg-destructive/10"
+                          onClick={() => setBanUserId(u.user_id)}
+                          title="Permanently ban user"
+                        >
                           <Ban size={11} className="mr-1" />Ban
                         </Button>
                       )}
-                      {isSuperAdmin && (
+
+                      {/* Password reset + delete — super admin only */}
+                      {isSuperAdmin && !isSelf && (
                         <>
                           <Button
                             size="sm"
@@ -272,9 +318,13 @@ const UserManagementPage: React.FC = () => {
                           >
                             <Key size={13} />
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             onClick={() => setDeleteUserId(u.user_id)}
-                            title="Delete user">
+                            title="Delete user"
+                          >
                             <Trash2 size={13} />
                           </Button>
                         </>
@@ -288,7 +338,55 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Delete Confirmation */}
+      {/* ── Suspend Confirmation ───────────────────────────────── */}
+      <AlertDialog open={!!suspendUserId} onOpenChange={open => !open && setSuspendUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Suspend User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{suspendTarget?.full_name}</strong> will be temporarily suspended and won't be able to access the platform.
+              You can reactivate them at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-orange-500 text-white hover:bg-orange-600"
+              onClick={() => suspendUserId && updateStatus.mutate({ userId: suspendUserId, status: 'suspended', userName: suspendTarget?.full_name })}
+              disabled={updateStatus.isPending}
+            >
+              {updateStatus.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Suspend User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Ban Confirmation ───────────────────────────────────── */}
+      <AlertDialog open={!!banUserId} onOpenChange={open => !open && setBanUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ban User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{banTarget?.full_name}</strong> will be permanently banned and blocked from the platform.
+              This is a stronger action than a suspension.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => banUserId && updateStatus.mutate({ userId: banUserId, status: 'banned', userName: banTarget?.full_name })}
+              disabled={updateStatus.isPending}
+            >
+              {updateStatus.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              Ban User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Delete Confirmation ────────────────────────────────── */}
       <AlertDialog open={!!deleteUserId} onOpenChange={open => !open && setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -312,7 +410,7 @@ const UserManagementPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Password Reset Confirmation */}
+      {/* ── Password Reset Confirmation ────────────────────────── */}
       <AlertDialog open={!!resetUserId} onOpenChange={open => !open && setResetUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
