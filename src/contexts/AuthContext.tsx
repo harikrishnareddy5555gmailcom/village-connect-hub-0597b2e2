@@ -135,21 +135,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const signUp = async ({ fullName, mobileNumber, password, email }: SignUpData) => {
+  const signUp = async ({ fullName, mobileNumber, password, email, gender }: SignUpData) => {
     try {
-      // Use real email if provided, otherwise fall back to mobile-based fake email
       const authEmail = email && email.trim() ? email.trim() : `${mobileNumber}@villageconnect.app`;
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email: authEmail,
         password,
         options: {
           data: {
             full_name: fullName,
             mobile_number: mobileNumber,
+            gender: gender ?? null,
             ...(email && email.trim() ? { real_email: email.trim() } : {}),
           },
         },
       });
+      // After sign up, update gender + privacy on the profile
+      if (!error && signUpData?.user && gender) {
+        const isFemale = gender === 'Female';
+        await supabase
+          .from('profiles')
+          .update({
+            gender,
+            show_mobile: !isFemale,
+            show_email: !isFemale,
+          } as any)
+          .eq('user_id', signUpData.user.id);
+      }
       return { error };
     } catch (err) {
       return { error: err as Error };
