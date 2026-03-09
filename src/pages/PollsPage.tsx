@@ -112,7 +112,7 @@ const PollsPage: React.FC = () => {
 
   const voteMutation = useMutation({
     mutationFn: async ({ pollId, optionIndex }: { pollId: string; optionIndex: number }) => {
-      const { error } = awai(supabase as any).from('poll_votes'ny).insert({
+      const { error } = await (supabase as any).from('poll_votes').insert({
         poll_id: pollId,
         user_id: user!.id,
         option_index: optionIndex,
