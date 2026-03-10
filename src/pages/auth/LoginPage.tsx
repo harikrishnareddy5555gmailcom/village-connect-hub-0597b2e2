@@ -24,17 +24,21 @@ const LoginPage: React.FC = () => {
       } else if (profile?.status === 'active') {
         navigate('/feed', { replace: true });
       }
-      // For banned/suspended the AuthGuard handles it
     }
   }, [authLoading, user, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mobile.length < 10) {
+      toast.error('Please enter a valid 10-digit mobile number');
+      return;
+    }
     setLoading(true);
     const { error } = await signIn(mobile, password);
     setLoading(false);
     if (error) {
-      toast.error('Invalid mobile number or password');
+      // Show the specific error message (pending/banned/suspended/wrong password)
+      toast.error(error.message || 'Invalid mobile number or password');
     }
     // Navigation handled by the useEffect above once AuthContext resolves
   };
@@ -62,7 +66,7 @@ const LoginPage: React.FC = () => {
                 <Input
                   id="mobile"
                   type="tel"
-                  placeholder="Enter your mobile number"
+                  placeholder="Enter your 10-digit mobile number"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   className="pl-9"

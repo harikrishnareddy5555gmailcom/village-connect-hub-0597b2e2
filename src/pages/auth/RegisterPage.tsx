@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Phone, Lock, User, Loader2, MapPin, Mail, UserCircle } from 'lucide-react';
+import { Eye, EyeOff, Phone, Lock, User, Loader2, MapPin, Mail } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import varadayapalliLogo from '@/assets/varadayapalli-logo.png';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const GENDER_OPTIONS = [
+  { value: 'Male',              label: '👨 Male' },
+  { value: 'Female',            label: '👩 Female' },
+  { value: 'Prefer not to say', label: '🤐 Prefer not to say' },
+];
 
 const RegisterPage: React.FC = () => {
   const [form, setForm] = useState({
@@ -53,7 +60,7 @@ const RegisterPage: React.FC = () => {
     });
     setLoading(false);
     if (error) {
-      if (error.message?.includes('already registered')) {
+      if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
         toast.error('This mobile number is already registered. Please sign in.');
       } else if (error.message?.includes('email')) {
         toast.error('This email is already in use. Try a different one.');
@@ -118,37 +125,6 @@ const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Gender */}
-              <div>
-                <Label className="text-sm font-medium">
-                  Gender
-                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional)</span>
-                </Label>
-                <div className="flex gap-2 mt-1.5">
-                  {['Male', 'Female', 'Other'].map(g => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setForm(p => ({ ...p, gender: p.gender === g ? '' : g }))}
-                      disabled={loading}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
-                        form.gender === g
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border text-muted-foreground hover:border-primary/50'
-                      }`}
-                    >
-                      <UserCircle size={14} />
-                      {g}
-                    </button>
-                  ))}
-                </div>
-                {form.gender === 'Female' && (
-                  <p className="text-xs text-info mt-1.5 bg-info/10 px-3 py-1.5 rounded-lg">
-                    🔒 Female members' mobile number & contact details are kept private by default for safety.
-                  </p>
-                )}
-              </div>
-
               {/* Mobile Number */}
               <div>
                 <Label htmlFor="mobile" className="text-sm font-medium">Mobile Number <span className="text-destructive">*</span></Label>
@@ -168,7 +144,40 @@ const RegisterPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-1">Used to sign in to your account</p>
               </div>
 
-              {/* Email */}
+              {/* Gender */}
+              <div>
+                <Label className="text-sm font-medium">
+                  Gender <span className="text-destructive">*</span>
+                </Label>
+                <div className="grid grid-cols-3 gap-2 mt-1.5">
+                  {GENDER_OPTIONS.map(g => (
+                    <button
+                      key={g.value}
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, gender: p.gender === g.value ? '' : g.value }))}
+                      disabled={loading}
+                      className={cn(
+                        'flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-xl border text-xs font-medium transition-all',
+                        form.gender === g.value
+                          ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                          : 'border-border text-muted-foreground hover:border-primary/40 hover:bg-muted/50'
+                      )}
+                    >
+                      <span className="text-lg">{g.label.split(' ')[0]}</span>
+                      <span>{g.label.split(' ').slice(1).join(' ')}</span>
+                    </button>
+                  ))}
+                </div>
+                {form.gender === 'Female' && (
+                  <div className="mt-2 bg-info/10 border border-info/20 rounded-xl px-3 py-2.5">
+                    <p className="text-xs text-info-foreground leading-relaxed">
+                      🔒 <strong>Privacy Protected:</strong> Your mobile number and contact details will be kept private by default. You can control what you share from your profile settings.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Email (optional) */}
               <div>
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email Address
@@ -238,7 +247,7 @@ const RegisterPage: React.FC = () => {
               <Button
                 type="submit"
                 className="w-full btn-primary-gradient mt-2"
-                disabled={loading || (!!form.confirmPassword && form.password !== form.confirmPassword)}
+                disabled={loading || !form.gender || (!!form.confirmPassword && form.password !== form.confirmPassword)}
               >
                 {loading
                   ? <><Loader2 size={16} className="mr-2 animate-spin" />Registering...</>
@@ -254,7 +263,7 @@ const RegisterPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+            <div className="mt-4 p-3 bg-warning/10 border border-warning/30 rounded-xl">
               <p className="text-xs text-warning-foreground text-center">
                 ⏳ Your account will be reviewed by the admin before activation.
               </p>

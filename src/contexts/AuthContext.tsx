@@ -83,14 +83,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (mountedRef.current) setLoading(false);
     }, 8000);
 
-    // Step 1: Restore session from storage first (synchronous path)
+    // Step 1: Restore session from storage first
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       if (!mountedRef.current) return;
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
 
       if (initialSession?.user) {
-        // Fetch profile then mark loading done
         fetchProfile(initialSession.user.id).finally(() => {
           if (mountedRef.current) {
             clearTimeout(timeout);
@@ -103,8 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Step 2: Listen for subsequent auth changes (sign in / sign out / token refresh)
-    // IMPORTANT: Do NOT await anything inside this callback — it causes deadlocks
+    // Step 2: Listen for subsequent auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (!mountedRef.current) return;
@@ -120,7 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (newSession?.user) {
-          // Fire-and-forget profile fetch — do NOT await here
           fetchProfile(newSession.user.id).finally(() => {
             if (mountedRef.current) setLoading(false);
           });
@@ -138,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async ({ fullName, mobileNumber, password, email, gender }: SignUpData) => {
     try {
       const authEmail = email && email.trim() ? email.trim() : `${mobileNumber}@villageconnect.app`;
-      const { data: signUpData, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: authEmail,
         password,
         options: {
@@ -148,31 +145,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             gender: gender ?? null,
             ...(email && email.trim() ? { real_email: email.trim() } : {}),
           },
+          // Do NOT set emailRedirectTo — email confirmation is disabled
         },
       });
-      // After sign up, update gender + privacy on the profile
-      if (!error && signUpData?.user && gender) {
-        const isFemale = gender === 'Female';
-        await supabase
-          .from('profiles')
-          .update({
-            gender,
-            show_mobile: !isFemale,
-            show_email: !isFemale,
-          } as any)
-          .eq('user_id', signUpData.user.id);
-      }
       return { error };
     } catch (err) {
       return { error: err as Error };
     }
   };
 
+  /**
+   * Sign in with mobile number + password.
+   * After sign-in, checks profile status:
+   * - 'active'   → success, let AuthGuard navigate
+   * - 'pending'  → sign out + return error
+   * - 'banned' / 'suspended' → AuthGuard shows blocked screen
+   */
   const signIn = async (mobile: string, password: string) => {
     try {
       const fakeEmail = `${mobile}@villageconnect.app`;
-      const { error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
-      return { error };
+      const { data, error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
+      if (error) return { error };
+
+      // Fetch profile to check status
+      if (data.user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('status')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (profileData?.status === 'pending') {
+          // Sign them out immediately — they must wait for admin approval
+          await supabase.auth.signOut();
+          return { error: new Error('Your account is pending admin approval. Please wait for activation.') };
+        }
+        if (profileData?.status === 'banned') {
+          await supabase.auth.signOut();
+          return { error: new Error('Your account has been banned. Contact your village admin.') };
+        }
+        if (profileData?.status === 'suspended') {
+          await supabase.auth.signOut();
+          return { error: new Error('Your account is suspended. Contact your village admin.') };
+        }
+      }
+
+      return { error: null };
     } catch (err) {
       return { error: err as Error };
     }
