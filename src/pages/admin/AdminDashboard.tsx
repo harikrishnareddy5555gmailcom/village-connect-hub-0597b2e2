@@ -1,20 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { CheckCircle, XCircle, Users, Clock, BarChart3, Bell, Loader2, Shield } from 'lucide-react';
+import { CheckCircle, XCircle, Users, Clock, BarChart3, Bell, Loader2, Shield, DollarSign, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
 const AdminDashboard: React.FC = () => {
-  const { role } = useAuth();
+  const { role, profile: currentProfile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
+  const isSuperAdmin = role === 'super_admin';
 
-  // Pending users
+  // Pending users (never includes super_admins — they are invisible)
   const { data: pendingUsers = [], isLoading: loadingPending } = useQuery({
     queryKey: ['pending-users'],
     queryFn: async () => {
@@ -23,18 +24,28 @@ const AdminDashboard: React.FC = () => {
         .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-      return data ?? [];
+      return (data ?? []) as any[];
     },
   });
 
-  // Active users count
+  // Active users count (excludes super_admins)
   const { data: activeCount = 0 } = useQuery({
     queryKey: ['active-users-count'],
     queryFn: async () => {
-      const { count } = await supabase
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_admin');
+      const superAdminIds = (roleData ?? []).map((r: any) => r.user_id);
+
+      let q = supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
+      if (superAdminIds.length > 0) {
+        q = (q as any).not('user_id', 'in', `(${superAdminIds.join(',')})`);
+      }
+      const { count } = await q;
       return count ?? 0;
     },
   });
@@ -54,6 +65,20 @@ const AdminDashboard: React.FC = () => {
     enabled: !!currentVillage,
   });
 
+  // Total donations
+  const { data: totalDonations = 0 } = useQuery({
+    queryKey: ['total-donations-count', currentVillage?.id],
+    queryFn: async () => {
+      if (!currentVillage) return 0;
+      const { data } = await supabase
+        .from('donations')
+        .select('amount')
+        .eq('village_id', currentVillage.id);
+      return (data ?? []).reduce((s: number, d: any) => s + Number(d.amount), 0);
+    },
+    enabled: !!currentVillage,
+  });
+
   const approveUser = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await (supabase as any)
@@ -61,20 +86,19 @@ const AdminDashboard: React.FC = () => {
         .update({ status: 'active' })
         .eq('user_id', userId);
       if (error) throw error;
-
       // Assign 'user' role
-      await (supabase as any).from('user_roles').insert({
+      await (supabase as any).from('user_roles').upsert({
         user_id: userId,
         village_id: currentVillage?.id ?? null,
         role: 'user',
-      });
+      }, { onConflict: 'user_id,role' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-users'] });
       queryClient.invalidateQueries({ queryKey: ['active-users-count'] });
       toast.success('User approved and activated!');
     },
-    onError: () => toast.error('Failed to approve user'),
+    onError: (e: Error) => toast.error(`Failed to approve: ${e.message}`),
   });
 
   const rejectUser = useMutation({
@@ -91,11 +115,13 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
+  const fmt = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
   const stats = [
-    { label: 'Active Users', value: activeCount, icon: <Users size={20} />, color: 'bg-success/10 text-success' },
-    { label: 'Pending Approval', value: pendingUsers.length, icon: <Clock size={20} />, color: 'bg-warning/10 text-warning' },
-    { label: 'Total Posts', value: postsCount, icon: <BarChart3 size={20} />, color: 'bg-info/10 text-info' },
-    { label: 'Village', value: currentVillage?.name ?? 'N/A', icon: <Bell size={20} />, color: 'bg-primary/10 text-primary', isText: true },
+    { label: 'Active Members', value: String(activeCount), icon: <Users size={20} />, color: 'bg-success/10 text-success' },
+    { label: 'Pending Approval', value: String(pendingUsers.length), icon: <Clock size={20} />, color: 'bg-warning/10 text-warning' },
+    { label: 'Total Posts', value: String(postsCount), icon: <MessageSquare size={20} />, color: 'bg-info/10 text-info' },
+    { label: 'Total Donations', value: fmt(totalDonations), icon: <DollarSign size={20} />, color: 'bg-primary/10 text-primary' },
   ];
 
   return (
@@ -107,7 +133,9 @@ const AdminDashboard: React.FC = () => {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
-          <p className="text-sm text-muted-foreground capitalize">{role?.replace('_', ' ')} · {currentVillage?.name}</p>
+          <p className="text-sm text-muted-foreground capitalize">
+            {role?.replace('_', ' ')} · {currentVillage?.name}
+          </p>
         </div>
       </div>
 
@@ -118,9 +146,7 @@ const AdminDashboard: React.FC = () => {
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${stat.color}`}>
               {stat.icon}
             </div>
-            <p className={`font-bold ${stat.isText ? 'text-base' : 'text-2xl'} text-foreground`}>
-              {stat.value}
-            </p>
+            <p className="font-bold text-xl text-foreground truncate">{stat.value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
           </div>
         ))}
@@ -134,7 +160,9 @@ const AdminDashboard: React.FC = () => {
             <p className="text-xs text-muted-foreground">Approve or reject new user registrations</p>
           </div>
           {pendingUsers.length > 0 && (
-            <span className="badge-pending">{pendingUsers.length} pending</span>
+            <span className="bg-warning/15 text-yellow-700 border border-warning/30 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+              {pendingUsers.length} pending
+            </span>
           )}
         </div>
 
@@ -153,14 +181,24 @@ const AdminDashboard: React.FC = () => {
             {pendingUsers.map((user: any) => (
               <div key={user.id} className="flex items-center gap-3 p-3 bg-muted/40 rounded-xl">
                 <Avatar className="w-10 h-10 flex-shrink-0">
-                  <AvatarFallback className="bg-primary/15 text-primary font-bold">
+                  <AvatarFallback className={`font-bold ${user.gender === 'Female' ? 'bg-pink-100 text-pink-700' : 'bg-primary/15 text-primary'}`}>
                     {user.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-foreground">{user.full_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm text-foreground">{user.full_name}</p>
+                    {user.gender && (
+                      <span className="text-xs text-muted-foreground">({user.gender})</span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    📱 {user.mobile_number || 'No number'} · Joined {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
+                    {/* Only super admin can see female mobile number here */}
+                    {isSuperAdmin || (user.gender !== 'Female' || user.show_mobile)
+                      ? `📱 ${user.mobile_number || 'No number'}`
+                      : '📱 🔒 Private'
+                    }
+                    {' · '}Joined {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
                   </p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
@@ -170,18 +208,15 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => approveUser.mutate(user.user_id)}
                     disabled={approveUser.isPending}
                   >
-                    <CheckCircle size={13} className="mr-1" />
-                    Approve
+                    <CheckCircle size={13} className="mr-1" /> Approve
                   </Button>
                   <Button
-                    size="sm"
-                    variant="outline"
+                    size="sm" variant="outline"
                     className="border-destructive text-destructive hover:bg-destructive/10 h-8 text-xs"
                     onClick={() => rejectUser.mutate(user.user_id)}
                     disabled={rejectUser.isPending}
                   >
-                    <XCircle size={13} className="mr-1" />
-                    Reject
+                    <XCircle size={13} className="mr-1" /> Reject
                   </Button>
                 </div>
               </div>

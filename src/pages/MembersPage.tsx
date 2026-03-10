@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useVillage } from '@/contexts/VillageContext';
-import { Users, Search, Briefcase, Phone, BadgeCheck } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Users, Search, Briefcase, Phone, Lock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -18,12 +19,19 @@ interface Member {
   bio: string | null;
   skills: string[] | null;
   mobile_number: string | null;
+  gender: string | null;
+  show_mobile: boolean;
+  show_email: boolean;
+  show_occupation: boolean;
   status: string;
   created_at: string;
 }
 
 const MembersPage: React.FC = () => {
   const { currentVillage } = useVillage();
+  const { role } = useAuth();
+  const isSuperAdmin = role === 'super_admin';
+
   const [search, setSearch] = useState('');
   const [occupationFilter, setOccupationFilter] = useState('all');
 
@@ -31,21 +39,31 @@ const MembersPage: React.FC = () => {
     queryKey: ['members', currentVillage?.id],
     enabled: !!currentVillage,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch all active profiles
+      const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('user_id, full_name, avatar_url, occupation, bio, skills, mobile_number, status, created_at')
+        .select('user_id, full_name, avatar_url, occupation, bio, skills, mobile_number, gender, show_mobile, show_email, show_occupation, status, created_at')
         .eq('village_id', currentVillage!.id)
         .eq('status', 'active')
         .order('full_name', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as Member[];
+
+      // Get super_admin user_ids to filter them out
+      const { data: superAdminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'super_admin');
+
+      const superAdminIds = new Set((superAdminRoles ?? []).map((r: any) => r.user_id));
+
+      // Filter out super admins from the public members list
+      return ((profiles ?? []) as Member[]).filter(p => !superAdminIds.has(p.user_id));
     },
   });
 
-  // Distinct occupations for filter dropdown
   const occupations = useMemo(() => {
     const set = new Set<string>();
-    members.forEach(m => { if (m.occupation) set.add(m.occupation); });
+    members.forEach(m => { if (m.occupation && m.show_occupation) set.add(m.occupation); });
     return Array.from(set).sort();
   }, [members]);
 
@@ -54,7 +72,7 @@ const MembersPage: React.FC = () => {
       const q = search.toLowerCase();
       const matchSearch = !q ||
         m.full_name?.toLowerCase().includes(q) ||
-        m.occupation?.toLowerCase().includes(q) ||
+        (m.show_occupation && m.occupation?.toLowerCase().includes(q)) ||
         m.bio?.toLowerCase().includes(q) ||
         m.skills?.some(s => s.toLowerCase().includes(q));
       const matchOccupation = occupationFilter === 'all' || m.occupation === occupationFilter;
@@ -75,6 +93,11 @@ const MembersPage: React.FC = () => {
             {isLoading ? 'Loading…' : `${filtered.length} active member${filtered.length !== 1 ? 's' : ''} in ${currentVillage?.name}`}
           </p>
         </div>
+      </div>
+
+      {/* Privacy notice */}
+      <div className="mb-4 p-3 bg-info/10 border border-info/20 rounded-xl text-xs text-info-foreground">
+        🔒 Some member details may be private based on their privacy preferences.
       </div>
 
       {/* Search + Filter */}
@@ -118,7 +141,7 @@ const MembersPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filtered.map(member => (
-            <MemberCard key={member.user_id} member={member} />
+            <MemberCard key={member.user_id} member={member} isSuperAdmin={isSuperAdmin} />
           ))}
         </div>
       )}
@@ -126,7 +149,7 @@ const MembersPage: React.FC = () => {
   );
 };
 
-const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
+const MemberCard: React.FC<{ member: Member; isSuperAdmin: boolean }> = ({ member, isSuperAdmin }) => {
   const initials = member.full_name
     ?.split(' ')
     .map(w => w[0])
@@ -135,38 +158,51 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
     .slice(0, 2) ?? 'U';
 
   const joinedYear = new Date(member.created_at).getFullYear();
+  const isFemale = member.gender === 'Female';
+
+  // Determine what to show based on privacy settings
+  const showMobile = isSuperAdmin || member.show_mobile;
+  const showOccupation = member.show_occupation;
 
   return (
     <div className="vcp-card p-4 flex gap-3 hover:shadow-card-hover transition-shadow">
-      {/* Avatar */}
       <div className="flex-shrink-0">
         <Avatar className="w-14 h-14 ring-2 ring-primary/10">
           <AvatarImage src={member.avatar_url ?? ''} alt={member.full_name} />
-          <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
+          <AvatarFallback className={cn(
+            'font-bold text-lg',
+            isFemale ? 'bg-pink-100 text-pink-700' : 'bg-primary/10 text-primary'
+          )}>
             {initials}
           </AvatarFallback>
         </Avatar>
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1 mb-0.5">
-          <h3 className="font-semibold text-sm text-foreground leading-tight truncate">{member.full_name}</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="font-semibold text-sm text-foreground leading-tight">{member.full_name}</h3>
+            {isFemale && <span className="text-xs text-pink-500">♀</span>}
+          </div>
           <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0 mt-0.5">{joinedYear}</span>
         </div>
 
-        {member.occupation && (
+        {showOccupation && member.occupation ? (
           <div className="flex items-center gap-1 mb-1.5">
             <Briefcase size={11} className="text-primary flex-shrink-0" />
             <span className="text-xs text-muted-foreground truncate">{member.occupation}</span>
           </div>
-        )}
+        ) : !showOccupation && member.occupation ? (
+          <div className="flex items-center gap-1 mb-1.5">
+            <Lock size={11} className="text-muted-foreground/50 flex-shrink-0" />
+            <span className="text-xs text-muted-foreground/50">Occupation private</span>
+          </div>
+        ) : null}
 
         {member.bio && (
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-1.5">{member.bio}</p>
         )}
 
-        {/* Skills */}
         {member.skills && member.skills.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {member.skills.slice(0, 4).map(skill => (
@@ -175,15 +211,13 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
               </Badge>
             ))}
             {member.skills.length > 4 && (
-              <span className="text-[10px] text-muted-foreground self-center">
-                +{member.skills.length - 4} more
-              </span>
+              <span className="text-[10px] text-muted-foreground self-center">+{member.skills.length - 4} more</span>
             )}
           </div>
         )}
 
-        {/* Phone — optional */}
-        {member.mobile_number && (
+        {/* Phone — respect privacy */}
+        {showMobile && member.mobile_number ? (
           <a
             href={`tel:${member.mobile_number}`}
             className="flex items-center gap-1 mt-1.5 text-[10px] text-primary hover:underline"
@@ -191,7 +225,12 @@ const MemberCard: React.FC<{ member: Member }> = ({ member }) => {
             <Phone size={10} />
             {member.mobile_number}
           </a>
-        )}
+        ) : isFemale && !member.show_mobile ? (
+          <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground/50">
+            <Lock size={10} />
+            Contact info private
+          </div>
+        ) : null}
       </div>
     </div>
   );

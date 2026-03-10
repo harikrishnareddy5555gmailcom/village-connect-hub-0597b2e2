@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Users, Search, Ban, CheckCircle, Loader2, Trash2, Key, PauseCircle } from 'lucide-react';
+import { Users, Search, Ban, CheckCircle, Loader2, Trash2, Key, PauseCircle, Shield, Eye, EyeOff } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -25,6 +26,13 @@ const STATUS_COLOR: Record<string, string> = {
   suspended: 'bg-orange-500/15 text-orange-700 border-orange-500/30',
 };
 
+const ROLE_BADGE: Record<string, string> = {
+  super_admin: 'bg-destructive/15 text-destructive border-destructive/30',
+  admin:       'bg-primary/15 text-primary border-primary/30',
+  moderator:   'bg-info/15 text-info border-info/30',
+  user:        'bg-muted text-muted-foreground border-border',
+};
+
 const UserManagementPage: React.FC = () => {
   const { role: myRole, user: currentUser, profile: currentProfile } = useAuth();
   const { currentVillage } = useVillage();
@@ -35,32 +43,28 @@ const UserManagementPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [resetUserId,  setResetUserId]  = useState<string | null>(null);
-  // confirm dialogs for suspend/ban
   const [suspendUserId, setSuspendUserId] = useState<string | null>(null);
   const [banUserId,     setBanUserId]     = useState<string | null>(null);
+  // Privacy: show mobile toggle (super admin only)
+  const [showMobiles, setShowMobiles] = useState(false);
 
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ['all-users', filterStatus, currentVillage?.id],
-    // Always fetch — don't block on currentVillage being ready
+    queryKey: ['all-users', filterStatus, currentVillage?.id, isSuperAdmin],
     queryFn: async () => {
-      // Super admin: fetch ALL profiles; others: filter by village
       let q = supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!isSuperAdmin && currentVillage?.id) {
-        q = (q as any).eq('village_id', currentVillage.id);
-      } else if (currentVillage?.id) {
-        // Super admin still scopes to current village if one is set
+      if (currentVillage?.id) {
         q = (q as any).eq('village_id', currentVillage.id);
       }
-
       if (filterStatus !== 'all') q = (q as any).eq('status', filterStatus);
+
       const { data: profiles, error } = await q;
       if (error) throw error;
 
-      const profileList = profiles ?? [];
+      const profileList = (profiles ?? []) as any[];
       if (profileList.length === 0) return [];
 
       const { data: roles } = await supabase
@@ -78,10 +82,17 @@ const UserManagementPage: React.FC = () => {
         }
       });
 
-      return profileList.map((p: any) => ({
+      const result = profileList.map((p: any) => ({
         ...p,
-        user_roles: rolesMap[p.user_id] ? [{ role: rolesMap[p.user_id] }] : [],
+        _topRole: rolesMap[p.user_id] ?? 'user',
       }));
+
+      // CRITICAL: Non-super-admins NEVER see super_admin users
+      if (!isSuperAdmin) {
+        return result.filter((u: any) => u._topRole !== 'super_admin');
+      }
+
+      return result;
     },
   });
 
@@ -91,18 +102,13 @@ const UserManagementPage: React.FC = () => {
       if (error) throw error;
       await writeAuditLog({
         action_type: status === 'active' ? 'activate' : status,
-        entity_type: 'user',
-        entity_id: userId,
-        entity_name: userName,
-        performed_by: currentUser!.id,
-        performed_by_name: currentProfile?.full_name,
-        village_id: currentVillage?.id,
-        metadata: { new_status: status },
+        entity_type: 'user', entity_id: userId, entity_name: userName,
+        performed_by: currentUser!.id, performed_by_name: currentProfile?.full_name,
+        village_id: currentVillage?.id, metadata: { new_status: status },
       });
     },
     onSuccess: () => {
-      setSuspendUserId(null);
-      setBanUserId(null);
+      setSuspendUserId(null); setBanUserId(null);
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
       toast.success('User status updated');
     },
@@ -111,29 +117,20 @@ const UserManagementPage: React.FC = () => {
 
   const assignRole = useMutation({
     mutationFn: async ({ userId, role, userName }: { userId: string; role: string; userName?: string }) => {
+      if (!isSuperAdmin) { throw new Error('Only Super Admin can assign roles'); }
       await (supabase as any).from('user_roles').delete().eq('user_id', userId);
       const { error } = await (supabase as any).from('user_roles').insert({
-        user_id: userId,
-        village_id: currentVillage?.id ?? null,
-        role,
+        user_id: userId, village_id: currentVillage?.id ?? null, role,
       });
       if (error) throw error;
       await writeAuditLog({
-        action_type: 'role_change',
-        entity_type: 'user',
-        entity_id: userId,
-        entity_name: userName,
-        performed_by: currentUser!.id,
-        performed_by_name: currentProfile?.full_name,
-        village_id: currentVillage?.id,
-        metadata: { new_role: role },
+        action_type: 'role_change', entity_type: 'user', entity_id: userId, entity_name: userName,
+        performed_by: currentUser!.id, performed_by_name: currentProfile?.full_name,
+        village_id: currentVillage?.id, metadata: { new_role: role },
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-users'] });
-      toast.success('Role assigned');
-    },
-    onError: () => toast.error('Failed to assign role'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['all-users'] }); toast.success('Role assigned'); },
+    onError: (e: Error) => toast.error(e.message ?? 'Failed to assign role'),
   });
 
   const deleteUser = useMutation({
@@ -142,19 +139,15 @@ const UserManagementPage: React.FC = () => {
       const { error } = await (supabase as any).from('profiles').delete().eq('user_id', userId);
       if (error) throw error;
       await writeAuditLog({
-        action_type: 'delete',
-        entity_type: 'user',
-        entity_id: userId,
-        entity_name: userName,
-        performed_by: currentUser!.id,
-        performed_by_name: currentProfile?.full_name,
+        action_type: 'delete', entity_type: 'user', entity_id: userId, entity_name: userName,
+        performed_by: currentUser!.id, performed_by_name: currentProfile?.full_name,
         village_id: currentVillage?.id,
       });
     },
     onSuccess: () => {
       setDeleteUserId(null);
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
-      toast.success('User removed from village');
+      toast.success('User removed');
     },
     onError: () => toast.error('Failed to delete user'),
   });
@@ -167,19 +160,11 @@ const UserManagementPage: React.FC = () => {
       });
       if (error) throw error;
       await writeAuditLog({
-        action_type: 'password_reset',
-        entity_type: 'user',
-        entity_id: userId,
-        entity_name: userName,
-        performed_by: currentUser!.id,
-        performed_by_name: currentProfile?.full_name,
-        village_id: currentVillage?.id,
+        action_type: 'password_reset', entity_type: 'user', entity_id: userId, entity_name: userName,
+        performed_by: currentUser!.id, performed_by_name: currentProfile?.full_name, village_id: currentVillage?.id,
       });
     },
-    onSuccess: () => {
-      setResetUserId(null);
-      toast.success('Password reset link sent to user');
-    },
+    onSuccess: () => { setResetUserId(null); toast.success('Password reset link sent'); },
     onError: (e: Error) => toast.error(`Reset failed: ${e.message}`),
   });
 
@@ -194,11 +179,18 @@ const UserManagementPage: React.FC = () => {
   const suspendTarget = filtered.find((u: any) => u.user_id === suspendUserId);
   const banTarget     = filtered.find((u: any) => u.user_id === banUserId);
 
-  // Admins (non-super) cannot act on super_admin users
+  // Admins can act on user/moderator accounts only; super admin can act on anyone except themselves
   const canActOn = (u: any) => {
+    if (u.user_id === currentUser?.id) return false; // can't act on self
     if (isSuperAdmin) return true;
-    const topRole = (u.user_roles as any[])?.[0]?.role;
-    return topRole !== 'super_admin' && topRole !== 'admin';
+    return u._topRole !== 'super_admin' && u._topRole !== 'admin';
+  };
+
+  // Privacy: for female users, hide mobile unless super admin or user allows it
+  const getMobileDisplay = (u: any) => {
+    if (isSuperAdmin) return u.mobile_number ?? '—';
+    if (u.gender === 'Female' && !u.show_mobile) return '🔒 Private';
+    return u.mobile_number ?? '—';
   };
 
   return (
@@ -208,11 +200,31 @@ const UserManagementPage: React.FC = () => {
         <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
           <Users size={20} className="text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-foreground">User Management</h1>
-          <p className="text-xs text-muted-foreground">Manage all village members · {(users as any[]).length} total</p>
+          <p className="text-xs text-muted-foreground">
+            Manage village members · {(users as any[]).length} {isSuperAdmin ? 'total (including admins)' : 'members'}
+          </p>
         </div>
+        {isSuperAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground"
+            onClick={() => setShowMobiles(!showMobiles)}
+          >
+            {showMobiles ? <EyeOff size={14} className="mr-1" /> : <Eye size={14} className="mr-1" />}
+            {showMobiles ? 'Hide' : 'Show'} Details
+          </Button>
+        )}
       </div>
+
+      {/* Privacy notice for non-super-admins */}
+      {!isSuperAdmin && (
+        <div className="mb-4 p-3 bg-info/10 border border-info/20 rounded-xl text-xs text-info-foreground">
+          🔒 Female members' contact details are private by default per our privacy policy.
+        </div>
+      )}
 
       {/* Search & Filter */}
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -221,9 +233,7 @@ const UserManagementPage: React.FC = () => {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or mobile..." className="pl-8" />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -234,7 +244,7 @@ const UserManagementPage: React.FC = () => {
         </Select>
       </div>
 
-      {/* Users Table */}
+      {/* Users List */}
       {isLoading ? (
         <div className="flex justify-center py-12"><Loader2 size={24} className="animate-spin text-primary" /></div>
       ) : filtered.length === 0 ? (
@@ -247,21 +257,33 @@ const UserManagementPage: React.FC = () => {
         <div className="vcp-card overflow-hidden">
           <div className="divide-y divide-border">
             {filtered.map((u: any) => {
-              const topRole    = (u.user_roles as any[])?.[0]?.role ?? 'user';
+              const topRole    = u._topRole ?? 'user';
               const actionable = canActOn(u);
               const isSelf     = u.user_id === currentUser?.id;
+              const isFemale   = u.gender === 'Female';
 
               return (
                 <div key={u.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
                   <Avatar className="w-10 h-10 flex-shrink-0">
-                    <AvatarFallback className="bg-primary/15 text-primary font-bold">
+                    <AvatarFallback className={cn(
+                      'font-bold text-sm',
+                      isFemale ? 'bg-pink-100 text-pink-700' : 'bg-primary/15 text-primary'
+                    )}>
                       {u.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
                     </AvatarFallback>
                   </Avatar>
+
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-foreground truncate">{u.full_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      📱 {u.mobile_number ?? '—'} · Joined {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm text-foreground truncate">{u.full_name}</p>
+                      {isFemale && <span className="text-xs text-pink-600">♀</span>}
+                      <Badge className={cn('text-[10px] px-1.5 py-0 h-4 border', ROLE_BADGE[topRole] ?? ROLE_BADGE.user)}>
+                        {topRole === 'super_admin' ? '⭐ Super Admin' : topRole}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      📱 {(isSuperAdmin && showMobiles) || (!isFemale || u.show_mobile) ? getMobileDisplay(u) : getMobileDisplay(u)}
+                      {' · '}Joined {formatDistanceToNow(new Date(u.created_at), { addSuffix: true })}
                     </p>
                   </div>
 
@@ -272,11 +294,12 @@ const UserManagementPage: React.FC = () => {
                     </span>
 
                     {/* Role selector — super admin only */}
-                    {isSuperAdmin && (
-                      <Select value={topRole} onValueChange={role => assignRole.mutate({ userId: u.user_id, role, userName: u.full_name })}>
-                        <SelectTrigger className="h-7 text-xs w-[110px]">
-                          <SelectValue />
-                        </SelectTrigger>
+                    {isSuperAdmin && !isSelf && (
+                      <Select
+                        value={topRole}
+                        onValueChange={role => assignRole.mutate({ userId: u.user_id, role, userName: u.full_name })}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="user">User</SelectItem>
                           <SelectItem value="moderator">Moderator</SelectItem>
@@ -289,37 +312,34 @@ const UserManagementPage: React.FC = () => {
                     {/* Action buttons */}
                     <div className="flex gap-1">
                       {/* Activate */}
-                      {actionable && !isSelf && u.status !== 'active' && (
+                      {actionable && u.status !== 'active' && (
                         <Button
                           size="sm"
                           className="h-7 text-xs bg-success/90 hover:bg-success text-white"
                           onClick={() => updateStatus.mutate({ userId: u.user_id, status: 'active', userName: u.full_name })}
+                          disabled={updateStatus.isPending}
                         >
                           <CheckCircle size={11} className="mr-1" />Activate
                         </Button>
                       )}
 
-                      {/* Suspend — shown when user is active or banned */}
-                      {actionable && !isSelf && u.status !== 'suspended' && (
+                      {/* Suspend */}
+                      {actionable && u.status !== 'suspended' && (
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size="sm" variant="outline"
                           className="h-7 text-xs border-orange-500 text-orange-600 hover:bg-orange-500/10"
                           onClick={() => setSuspendUserId(u.user_id)}
-                          title="Temporarily suspend user"
                         >
                           <PauseCircle size={11} className="mr-1" />Suspend
                         </Button>
                       )}
 
-                      {/* Ban — shown when not already banned */}
-                      {actionable && !isSelf && u.status !== 'banned' && (
+                      {/* Ban */}
+                      {actionable && u.status !== 'banned' && (
                         <Button
-                          size="sm"
-                          variant="outline"
+                          size="sm" variant="outline"
                           className="h-7 text-xs border-destructive text-destructive hover:bg-destructive/10"
                           onClick={() => setBanUserId(u.user_id)}
-                          title="Permanently ban user"
                         >
                           <Ban size={11} className="mr-1" />Ban
                         </Button>
@@ -329,8 +349,7 @@ const UserManagementPage: React.FC = () => {
                       {isSuperAdmin && !isSelf && (
                         <>
                           <Button
-                            size="sm"
-                            variant="ghost"
+                            size="sm" variant="ghost"
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-info hover:bg-info/10"
                             onClick={() => setResetUserId(u.user_id)}
                             title="Send password reset"
@@ -338,8 +357,7 @@ const UserManagementPage: React.FC = () => {
                             <Key size={13} />
                           </Button>
                           <Button
-                            size="sm"
-                            variant="ghost"
+                            size="sm" variant="ghost"
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             onClick={() => setDeleteUserId(u.user_id)}
                             title="Delete user"
@@ -357,13 +375,13 @@ const UserManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Suspend Confirmation ───────────────────────────────── */}
+      {/* ── Suspend Confirmation ── */}
       <AlertDialog open={!!suspendUserId} onOpenChange={open => !open && setSuspendUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Suspend User?</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{suspendTarget?.full_name}</strong> will be temporarily suspended and won't be able to access the platform.
+              <strong>{suspendTarget?.full_name}</strong> will be temporarily suspended.
               You can reactivate them at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -381,14 +399,13 @@ const UserManagementPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Ban Confirmation ───────────────────────────────────── */}
+      {/* ── Ban Confirmation ── */}
       <AlertDialog open={!!banUserId} onOpenChange={open => !open && setBanUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Ban User?</AlertDialogTitle>
             <AlertDialogDescription>
-              <strong>{banTarget?.full_name}</strong> will be permanently banned and blocked from the platform.
-              This is a stronger action than a suspension.
+              <strong>{banTarget?.full_name}</strong> will be permanently banned from the platform.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -405,14 +422,13 @@ const UserManagementPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Delete Confirmation ────────────────────────────────── */}
+      {/* ── Delete Confirmation ── */}
       <AlertDialog open={!!deleteUserId} onOpenChange={open => !open && setDeleteUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete User?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove <strong>{deleteTarget?.full_name}</strong> from the village.
-              Their posts and activity will remain but they won't be able to log in. This cannot be undone.
+              This will permanently remove <strong>{deleteTarget?.full_name}</strong> from the village. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -429,24 +445,19 @@ const UserManagementPage: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Password Reset Confirmation ────────────────────────── */}
+      {/* ── Reset Password Confirmation ── */}
       <AlertDialog open={!!resetUserId} onOpenChange={open => !open && setResetUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send Password Reset?</AlertDialogTitle>
+            <AlertDialogTitle>Reset Password?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will send a password reset link to <strong>{resetTarget?.full_name}</strong> ({resetTarget?.mobile_number}).
-              They will receive a link to set a new password.
+              Send a password reset link to <strong>{resetTarget?.full_name}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => resetUserId && resetPassword.mutate({
-                userId: resetUserId,
-                userMobile: resetTarget?.mobile_number,
-                userName: resetTarget?.full_name,
-              })}
+              onClick={() => resetUserId && resetPassword.mutate({ userId: resetUserId, userMobile: resetTarget?.mobile_number, userName: resetTarget?.full_name })}
               disabled={resetPassword.isPending}
             >
               {resetPassword.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
