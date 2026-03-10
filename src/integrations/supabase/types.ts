@@ -1108,6 +1108,7 @@ export type Database = {
           occupation: string | null
           show_email: boolean
           show_mobile: boolean
+          show_occupation: boolean
           skills: string[] | null
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
@@ -1125,6 +1126,7 @@ export type Database = {
           occupation?: string | null
           show_email?: boolean
           show_mobile?: boolean
+          show_occupation?: boolean
           skills?: string[] | null
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
@@ -1142,6 +1144,7 @@ export type Database = {
           occupation?: string | null
           show_email?: boolean
           show_mobile?: boolean
+          show_occupation?: boolean
           skills?: string[] | null
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
@@ -1544,6 +1547,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "moderator" | "user"

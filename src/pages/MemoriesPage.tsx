@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Camera, MapPin, Send, Trash2, X, Loader2, ImagePlus, BookHeart } from 'lucide-react';
+import { Camera, MapPin, Send, Trash2, X, Loader2, ImagePlus, BookHeart, Heart, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { compressImages } from '@/lib/imageCompression';
 
 interface Memory {
   id: string;
@@ -53,9 +54,19 @@ const MemoriesPage: React.FC = () => {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).slice(0, 6);
     if (!files.length) return;
-    setImageFiles(prev => [...prev, ...files].slice(0, 6));
-    const previews = files.map(f => URL.createObjectURL(f));
+
+    // Validate file sizes (max 10MB each)
+    const valid = files.filter(f => f.size <= 10 * 1024 * 1024);
+    if (valid.length < files.length) {
+      toast.error('Some files exceed 10MB limit and were skipped');
+    }
+
+    setImageFiles(prev => [...prev, ...valid].slice(0, 6));
+    const previews = valid.map(f => URL.createObjectURL(f));
     setImagePreviews(prev => [...prev, ...previews].slice(0, 6));
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeImage = (i: number) => {
@@ -65,13 +76,15 @@ const MemoriesPage: React.FC = () => {
   };
 
   const uploadImages = async (): Promise<string[]> => {
+    // Compress all images first
+    const compressed = await compressImages(imageFiles, 'memory');
     const urls: string[] = [];
-    for (const file of imageFiles) {
-      const ext = file.name.split('.').pop();
-      const path = `${user!.id}/memories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('post-media').upload(path, file, { upsert: false });
+
+    for (const file of compressed) {
+      const path = `${user!.id}/memories/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
+      const { error } = await supabase.storage.from('memory-gallery').upload(path, file, { upsert: false });
       if (error) throw new Error(error.message);
-      const { data } = supabase.storage.from('post-media').getPublicUrl(path);
+      const { data } = supabase.storage.from('memory-gallery').getPublicUrl(path);
       urls.push(data.publicUrl);
     }
     return urls;
@@ -96,6 +109,7 @@ const MemoriesPage: React.FC = () => {
       setCaption('');
       setLocationTag('');
       setShowLocation(false);
+      imageFiles.forEach((_, i) => URL.revokeObjectURL(imagePreviews[i]));
       setImageFiles([]);
       setImagePreviews([]);
       qc.invalidateQueries({ queryKey: ['memories'] });
@@ -121,7 +135,7 @@ const MemoriesPage: React.FC = () => {
         <BookHeart size={24} className="text-primary" />
         <div>
           <h1 className="text-2xl font-bold text-foreground">Village Memories</h1>
-          <p className="text-muted-foreground text-sm">Share moments & milestones from your village / గ్రామ జ్ఞాపకాలు</p>
+          <p className="text-muted-foreground text-sm">Share moments & milestones / గ్రామ జ్ఞాపకాలు</p>
         </div>
       </div>
 
@@ -159,6 +173,13 @@ const MemoriesPage: React.FC = () => {
               </div>
             )}
 
+            {/* Upload hint */}
+            {imageFiles.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                📦 Images will be auto-compressed for faster upload
+              </p>
+            )}
+
             {showLocation && (
               <div className="mt-2 flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
                 <MapPin size={14} className="text-primary flex-shrink-0" />
@@ -178,6 +199,7 @@ const MemoriesPage: React.FC = () => {
                 <button
                   onClick={() => setShowLocation(!showLocation)}
                   className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", showLocation && "text-primary bg-primary/10")}
+                  title="Add location"
                 >
                   <MapPin size={16} />
                 </button>
@@ -185,7 +207,7 @@ const MemoriesPage: React.FC = () => {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={imagePreviews.length >= 6}
                   className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", imagePreviews.length >= 6 && "opacity-40 cursor-not-allowed")}
-                  title="Add photos (max 6)"
+                  title="Add photos (max 6, 10MB each)"
                 >
                   <ImagePlus size={16} />
                 </button>
@@ -208,9 +230,14 @@ const MemoriesPage: React.FC = () => {
 
       {/* Lightbox */}
       {lightboxSrc && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxSrc(null)}>
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxSrc(null)}
+        >
           <img src={lightboxSrc} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white"><X size={28} /></button>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setLightboxSrc(null)}>
+            <X size={28} />
+          </button>
         </div>
       )}
 
@@ -250,6 +277,7 @@ const MemoriesPage: React.FC = () => {
                   <button
                     onClick={() => deleteMutation.mutate(memory.id)}
                     className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
+                    title="Delete memory"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -264,7 +292,7 @@ const MemoriesPage: React.FC = () => {
               {/* Images */}
               {memory.image_urls.length > 0 && (
                 <div className={cn(
-                  "rounded-xl overflow-hidden",
+                  "rounded-xl overflow-hidden cursor-pointer",
                   memory.image_urls.length === 1 && "aspect-video",
                   memory.image_urls.length === 2 && "grid grid-cols-2 gap-0.5",
                   memory.image_urls.length >= 3 && "grid grid-cols-3 gap-0.5",
@@ -272,10 +300,15 @@ const MemoriesPage: React.FC = () => {
                   {memory.image_urls.map((url, i) => (
                     <div
                       key={i}
-                      className={cn("relative overflow-hidden cursor-pointer", memory.image_urls.length === 1 ? "h-full" : "h-40")}
+                      className={cn("relative overflow-hidden", memory.image_urls.length === 1 ? "h-full" : "h-40")}
                       onClick={() => setLightboxSrc(url)}
                     >
-                      <img src={url} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                      <img
+                        src={url}
+                        alt=""
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
                     </div>
                   ))}
                 </div>
