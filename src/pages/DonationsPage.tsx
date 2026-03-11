@@ -65,6 +65,8 @@ const DonationsPage: React.FC = () => {
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
+  // Lightbox state
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
   const villageId = currentVillage?.id;
   const donationsEnabled = (currentVillage as any)?.donations_enabled ?? false;
