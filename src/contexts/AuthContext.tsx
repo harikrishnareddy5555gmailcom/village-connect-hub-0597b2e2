@@ -134,7 +134,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async ({ fullName, mobileNumber, password, email, gender }: SignUpData) => {
     try {
-      const authEmail = email && email.trim() ? email.trim() : `${mobileNumber}@villageconnect.app`;
+      // Always use mobile-based fake email as primary auth identifier
+      const authEmail = `${mobileNumber}@villageconnect.app`;
       const { error } = await supabase.auth.signUp({
         email: authEmail,
         password,
@@ -145,7 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             gender: gender ?? null,
             ...(email && email.trim() ? { real_email: email.trim() } : {}),
           },
-          // Do NOT set emailRedirectTo — email confirmation is disabled
+          // No emailRedirectTo — email confirmation is disabled globally
         },
       });
       return { error };
