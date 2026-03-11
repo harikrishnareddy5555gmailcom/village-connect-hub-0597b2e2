@@ -851,6 +851,11 @@ const CreateCampaignDialog: React.FC<{
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
+  // Reset form whenever dialog opens
+  React.useEffect(() => {
+    if (open) setForm({ title: '', description: '', target_amount: '', image_urls: [] });
+  }, [open]);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).slice(0, 3);
     if (!files.length) return;
