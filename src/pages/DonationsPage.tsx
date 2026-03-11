@@ -567,19 +567,20 @@ const AddDonationDialog: React.FC<{
   villageId: string; upiId: string | null; qrCodeUrl: string | null;
   onSubmit: (d: Record<string, unknown>) => void; loading: boolean;
 }> = ({ open, onClose, campaigns, selectedCampaign, villageId, upiId, qrCodeUrl, onSubmit, loading }) => {
-  const [form, setForm] = useState({
+  const getInitialForm = (campaign: Campaign | null) => ({
     donor_name: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'),
-    payment_method: 'cash', campaign_id: selectedCampaign?.id ?? '',
+    payment_method: 'cash', campaign_id: campaign?.id ?? '',
     notes: '', is_anonymous: false, proof_url: '',
   });
+  const [form, setForm] = useState(() => getInitialForm(selectedCampaign));
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
-  // Sync selectedCampaign
+  // Reset form whenever dialog opens/closes or selectedCampaign changes
   React.useEffect(() => {
-    if (selectedCampaign) set('campaign_id', selectedCampaign.id);
-  }, [selectedCampaign]);
+    if (open) setForm(getInitialForm(selectedCampaign));
+  }, [open, selectedCampaign?.id]);
 
   const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
