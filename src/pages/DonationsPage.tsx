@@ -323,16 +323,46 @@ const DonationsPage: React.FC = () => {
 
             return (
               <div key={campaign.id} className="vcp-card overflow-hidden">
-                {/* Campaign image */}
+                {/* Campaign images */}
                 {campaign.image_urls && campaign.image_urls.length > 0 && (
-                  <div className="relative h-40 overflow-hidden">
-                    <img src={campaign.image_urls[0]} alt={campaign.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-0 left-0 p-4">
-                      <h3 className="font-bold text-white text-lg">{campaign.title}</h3>
+                  <div className="relative">
+                    {/* Main hero image */}
+                    <div
+                      className="relative h-44 overflow-hidden cursor-pointer"
+                      onClick={() => setLightbox({ images: campaign.image_urls!, index: 0 })}
+                    >
+                      <img
+                        src={campaign.image_urls[0]}
+                        alt={campaign.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                      <div className="absolute bottom-0 left-0 p-4">
+                        <h3 className="font-bold text-white text-lg drop-shadow">{campaign.title}</h3>
+                      </div>
+                      {campaign.is_active && (
+                        <Badge className="absolute top-3 right-3 bg-success/90 text-white border-0">Active</Badge>
+                      )}
+                      {campaign.image_urls.length > 1 && (
+                        <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                          <ZoomIn size={10} /> {campaign.image_urls.length} photos
+                        </div>
+                      )}
                     </div>
-                    {campaign.is_active && (
-                      <Badge className="absolute top-3 right-3 bg-success/90 text-white border-0">Active</Badge>
+                    {/* Thumbnail strip for extra images */}
+                    {campaign.image_urls.length > 1 && (
+                      <div className="flex gap-1.5 p-2 bg-muted/30">
+                        {campaign.image_urls.map((url, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setLightbox({ images: campaign.image_urls!, index: idx })}
+                            className="relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 border-transparent hover:border-primary focus:border-primary transition-all"
+                          >
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 hover:bg-primary/10 transition-colors" />
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
