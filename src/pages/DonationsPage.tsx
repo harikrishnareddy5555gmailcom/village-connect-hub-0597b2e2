@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  DollarSign, Plus, TrendingDown, TrendingUp, History,
+  DollarSign, Plus, TrendingDown, TrendingUp,
   Lock, Unlock, QrCode, Smartphone, Banknote, Camera,
   Target, Users, ChevronDown, ChevronUp, Image, X, Loader2, CheckCircle,
-  CreditCard, Upload
+  CreditCard, Upload, ZoomIn, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
