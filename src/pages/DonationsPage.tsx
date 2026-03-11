@@ -601,6 +601,56 @@ const EmptyState = ({ icon, message }: { icon: string; message: string }) => (
   </div>
 );
 
+// ─── Image Lightbox ───────────────────────────────────────────────────────────
+const ImageLightbox: React.FC<{ images: string[]; initialIndex: number; onClose: () => void }> = ({ images, initialIndex, onClose }) => {
+  const [idx, setIdx] = useState(initialIndex);
+  const prev = useCallback(() => setIdx(i => (i - 1 + images.length) % images.length), [images.length]);
+  const next = useCallback(() => setIdx(i => (i + 1) % images.length), [images.length]);
+
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight') next();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose, prev, next]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center" onClick={onClose}>
+      <button className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10" onClick={onClose}>
+        <X size={18} />
+      </button>
+      {images.length > 1 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-sm z-10">{idx + 1} / {images.length}</div>
+      )}
+      <div className="relative w-full max-w-3xl max-h-[80vh] flex items-center justify-center px-16" onClick={e => e.stopPropagation()}>
+        <img src={images[idx]} alt="" className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" />
+        {images.length > 1 && (
+          <>
+            <button onClick={prev} className="absolute left-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+            <button onClick={next} className="absolute right-2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors">
+              <ChevronRight size={20} />
+            </button>
+          </>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div className="flex gap-2 mt-4 px-4 overflow-x-auto max-w-full" onClick={e => e.stopPropagation()}>
+          {images.map((url, i) => (
+            <button key={i} onClick={() => setIdx(i)} className={cn("flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all", i === idx ? "border-primary scale-110" : "border-white/20 hover:border-white/50 opacity-60 hover:opacity-100")}>
+              <img src={url} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Add Donation Dialog ──────────────────────────────────────────────────────
 const AddDonationDialog: React.FC<{
   open: boolean; onClose: () => void;
