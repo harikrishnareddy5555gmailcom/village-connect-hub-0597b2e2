@@ -565,6 +565,15 @@ const DonationsPage: React.FC = () => {
         onSubmit={(d) => createCampaignMutation.mutate(d)}
         loading={createCampaignMutation.isPending}
       />
+
+      {/* Lightbox */}
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 };
