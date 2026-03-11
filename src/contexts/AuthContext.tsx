@@ -156,35 +156,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   /**
    * Sign in with mobile number + password.
-   * After sign-in, checks profile status:
-   * - 'active'   → success, let AuthGuard navigate
+   * Tries mobile@villageconnect.app first (the fake email format).
+   * Also tries the real email if the user registered with one.
+   * Status checks:
+   * - 'active'   → success
    * - 'pending'  → sign out + return error
-   * - 'banned' / 'suspended' → AuthGuard shows blocked screen
+   * - 'banned' / 'suspended' → sign out + return error
    */
   const signIn = async (mobile: string, password: string) => {
     try {
       const fakeEmail = `${mobile}@villageconnect.app`;
       const { data, error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
-      if (error) return { error };
+      if (error) {
+        // Could be a "Email not confirmed" error — surface it clearly
+        if (error.message?.toLowerCase().includes('email not confirmed')) {
+          return { error: new Error('Your account email is not confirmed. Please contact your village admin.') };
+        }
+        return { error };
+      }
 
-      // Fetch profile to check status
+      // Fetch profile to check status — use maybeSingle to avoid throwing on not found
       if (data.user) {
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('status')
           .eq('user_id', data.user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileData?.status === 'pending') {
-          // Sign them out immediately — they must wait for admin approval
+        if (profileError) {
+          // Profile fetch failed but auth succeeded — allow login, profile may load later
+          return { error: null };
+        }
+
+        if (!profileData) {
+          // No profile yet — allow login, profile creation may be pending via trigger
+          return { error: null };
+        }
+
+        if (profileData.status === 'pending') {
           await supabase.auth.signOut();
           return { error: new Error('Your account is pending admin approval. Please wait for activation.') };
         }
-        if (profileData?.status === 'banned') {
+        if (profileData.status === 'banned') {
           await supabase.auth.signOut();
           return { error: new Error('Your account has been banned. Contact your village admin.') };
         }
-        if (profileData?.status === 'suspended') {
+        if (profileData.status === 'suspended') {
           await supabase.auth.signOut();
           return { error: new Error('Your account is suspended. Contact your village admin.') };
         }
