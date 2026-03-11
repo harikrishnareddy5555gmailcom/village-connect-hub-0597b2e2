@@ -767,6 +767,11 @@ const AddExpenseDialog: React.FC<{
   const [uploading, setUploading] = useState(false);
   const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
+  // Reset on open
+  React.useEffect(() => {
+    if (open) setForm({ description: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'), category: 'General', notes: '', proof_url: '' });
+  }, [open]);
+
   const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
