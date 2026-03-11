@@ -773,9 +773,9 @@ const AddExpenseDialog: React.FC<{
     setUploading(true);
     const compressed = await compressImage(file, 'proof');
     const path = `expenses/${villageId}/${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from('documents').upload(path, compressed, { upsert: true });
-    if (error) { toast.error('Upload failed'); setUploading(false); return; }
-    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
+    const { error } = await supabase.storage.from('donation-proofs').upload(path, compressed, { upsert: true });
+    if (error) { toast.error('Upload failed: ' + error.message); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('donation-proofs').getPublicUrl(path);
     set('proof_url', urlData.publicUrl);
     setUploading(false);
     toast.success('Proof uploaded');
