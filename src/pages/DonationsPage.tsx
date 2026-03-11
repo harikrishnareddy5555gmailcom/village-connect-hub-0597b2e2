@@ -567,19 +567,20 @@ const AddDonationDialog: React.FC<{
   villageId: string; upiId: string | null; qrCodeUrl: string | null;
   onSubmit: (d: Record<string, unknown>) => void; loading: boolean;
 }> = ({ open, onClose, campaigns, selectedCampaign, villageId, upiId, qrCodeUrl, onSubmit, loading }) => {
-  const [form, setForm] = useState({
+  const getInitialForm = (campaign: Campaign | null) => ({
     donor_name: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'),
-    payment_method: 'cash', campaign_id: selectedCampaign?.id ?? '',
+    payment_method: 'cash', campaign_id: campaign?.id ?? '',
     notes: '', is_anonymous: false, proof_url: '',
   });
+  const [form, setForm] = useState(() => getInitialForm(selectedCampaign));
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
-  // Sync selectedCampaign
+  // Reset form whenever dialog opens/closes or selectedCampaign changes
   React.useEffect(() => {
-    if (selectedCampaign) set('campaign_id', selectedCampaign.id);
-  }, [selectedCampaign]);
+    if (open) setForm(getInitialForm(selectedCampaign));
+  }, [open, selectedCampaign?.id]);
 
   const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -766,15 +767,20 @@ const AddExpenseDialog: React.FC<{
   const [uploading, setUploading] = useState(false);
   const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
 
+  // Reset on open
+  React.useEffect(() => {
+    if (open) setForm({ description: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'), category: 'General', notes: '', proof_url: '' });
+  }, [open]);
+
   const handleProofUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     const compressed = await compressImage(file, 'proof');
     const path = `expenses/${villageId}/${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from('documents').upload(path, compressed, { upsert: true });
-    if (error) { toast.error('Upload failed'); setUploading(false); return; }
-    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path);
+    const { error } = await supabase.storage.from('donation-proofs').upload(path, compressed, { upsert: true });
+    if (error) { toast.error('Upload failed: ' + error.message); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('donation-proofs').getPublicUrl(path);
     set('proof_url', urlData.publicUrl);
     setUploading(false);
     toast.success('Proof uploaded');
@@ -849,6 +855,11 @@ const CreateCampaignDialog: React.FC<{
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: unknown) => setForm(p => ({ ...p, [k]: v }));
+
+  // Reset form whenever dialog opens
+  React.useEffect(() => {
+    if (open) setForm({ title: '', description: '', target_amount: '', image_urls: [] });
+  }, [open]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).slice(0, 3);
