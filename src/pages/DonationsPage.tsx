@@ -684,10 +684,10 @@ const AddDonationDialog: React.FC<{
           {campaigns.length > 0 && (
             <div>
               <Label className="text-sm font-medium">Campaign</Label>
-              <Select value={form.campaign_id} onValueChange={v => set('campaign_id', v)}>
+              <Select value={form.campaign_id || 'none'} onValueChange={v => set('campaign_id', v === 'none' ? '' : v)}>
                 <SelectTrigger className="mt-1.5"><SelectValue placeholder="General donation" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">General donation</SelectItem>
+                  <SelectItem value="none">General donation</SelectItem>
                   {campaigns.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
                 </SelectContent>
               </Select>
