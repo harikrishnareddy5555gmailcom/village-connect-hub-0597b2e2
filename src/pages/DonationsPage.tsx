@@ -630,7 +630,7 @@ const ImageLightbox: React.FC<{ images: string[]; initialIndex: number; onClose:
 
   return (
     <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center" onClick={onClose}>
-      <button className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10" onClick={onClose}>
+      <button className="absolute top-16 right-4 sm:top-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors z-10" onClick={onClose}>
         <X size={18} />
       </button>
       {images.length > 1 && (
