@@ -557,6 +557,7 @@ const DonationsPage: React.FC = () => {
         qrCodeUrl={qrCodeUrl}
         onSubmit={(d) => addDonationMutation.mutate(d)}
         loading={addDonationMutation.isPending}
+        onZoomQr={openLightbox}
       />
 
       <AddExpenseDialog
