@@ -298,8 +298,17 @@ const DonationsPage: React.FC = () => {
             )}
             {qrCodeUrl && (
               <div className="flex flex-col items-center gap-2">
-                <img src={qrCodeUrl} alt="UPI QR Code" className="w-28 h-28 rounded-xl border border-border object-contain" />
-                <p className="text-xs text-muted-foreground">Scan to pay</p>
+                <button
+                  onClick={() => openLightbox(qrCodeUrl)}
+                  className="group relative"
+                  title="Click to enlarge QR code"
+                >
+                  <img src={qrCodeUrl} alt="UPI QR Code" className="w-28 h-28 rounded-xl border border-border object-contain group-hover:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn size={22} className="text-primary drop-shadow-lg" />
+                  </div>
+                </button>
+                <p className="text-xs text-muted-foreground">Scan to pay · tap to enlarge</p>
               </div>
             )}
           </div>
