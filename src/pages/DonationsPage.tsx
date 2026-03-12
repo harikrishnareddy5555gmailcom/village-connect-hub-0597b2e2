@@ -65,8 +65,9 @@ const DonationsPage: React.FC = () => {
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
-  // Lightbox state
+  // Lightbox state — shared across all image previews
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
+  const openLightbox = (url: string) => setLightbox({ images: [url], index: 0 });
 
   const villageId = currentVillage?.id;
   const donationsEnabled = (currentVillage as any)?.donations_enabled ?? false;
