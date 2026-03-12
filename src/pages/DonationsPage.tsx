@@ -745,7 +745,7 @@ const AddDonationDialog: React.FC<{
               {qrCodeUrl && (
                 <button
                   type="button"
-                  onClick={() => setLightbox({ images: [qrCodeUrl], index: 0 })}
+                  onClick={() => onZoomQr?.(qrCodeUrl)}
                   className="group relative flex-shrink-0"
                   title="Tap to enlarge"
                 >
