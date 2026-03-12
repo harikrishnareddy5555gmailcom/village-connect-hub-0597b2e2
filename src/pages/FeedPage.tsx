@@ -209,11 +209,11 @@ const CreatePost: React.FC = () => {
             </div>
 
             <div className="flex gap-2">
-              {isAdmin && (
+            {isAdmin && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-xs border-accent text-accent-foreground hover:bg-accent/10"
+                  className="text-xs border-accent bg-accent/10 text-foreground dark:text-foreground hover:bg-accent/20"
                   onClick={() => handlePost(true)}
                   disabled={isPending}
                 >
