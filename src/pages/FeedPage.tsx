@@ -318,7 +318,7 @@ const PostCard: React.FC<{ post: PostWithAuthor }> = React.memo(({ post }) => {
           onClick={() => setLightboxSrc(null)}
         >
           <img src={lightboxSrc} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white">
+          <button className="absolute top-16 right-4 sm:top-4 text-white/80 hover:text-white">
             <X size={28} />
           </button>
         </div>

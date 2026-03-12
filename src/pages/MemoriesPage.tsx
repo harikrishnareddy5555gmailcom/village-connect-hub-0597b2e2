@@ -235,7 +235,7 @@ const MemoriesPage: React.FC = () => {
           onClick={() => setLightboxSrc(null)}
         >
           <img src={lightboxSrc} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white" onClick={() => setLightboxSrc(null)}>
+          <button className="absolute top-16 right-4 sm:top-4 text-white/80 hover:text-white" onClick={() => setLightboxSrc(null)}>
             <X size={28} />
           </button>
         </div>
