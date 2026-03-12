@@ -65,8 +65,9 @@ const DonationsPage: React.FC = () => {
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
-  // Lightbox state
+  // Lightbox state — shared across all image previews
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
+  const openLightbox = (url: string) => setLightbox({ images: [url], index: 0 });
 
   const villageId = currentVillage?.id;
   const donationsEnabled = (currentVillage as any)?.donations_enabled ?? false;
@@ -297,8 +298,17 @@ const DonationsPage: React.FC = () => {
             )}
             {qrCodeUrl && (
               <div className="flex flex-col items-center gap-2">
-                <img src={qrCodeUrl} alt="UPI QR Code" className="w-28 h-28 rounded-xl border border-border object-contain" />
-                <p className="text-xs text-muted-foreground">Scan to pay</p>
+                <button
+                  onClick={() => openLightbox(qrCodeUrl)}
+                  className="group relative"
+                  title="Click to enlarge QR code"
+                >
+                  <img src={qrCodeUrl} alt="UPI QR Code" className="w-28 h-28 rounded-xl border border-border object-contain group-hover:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn size={22} className="text-primary drop-shadow-lg" />
+                  </div>
+                </button>
+                <p className="text-xs text-muted-foreground">Scan to pay · tap to enlarge</p>
               </div>
             )}
           </div>
@@ -439,9 +449,9 @@ const DonationsPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-success text-xs">{fmt(d.amount)}</span>
                             {d.proof_url && (
-                              <a href={d.proof_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-[10px]">
+                              <button onClick={() => openLightbox(d.proof_url!)} className="text-primary hover:text-primary/80">
                                 <Image size={12} />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -494,9 +504,9 @@ const DonationsPage: React.FC = () => {
               <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
                 <p className="font-bold text-success">{fmt(d.amount)}</p>
                 {d.proof_url && (
-                  <a href={d.proof_url} target="_blank" rel="noreferrer" className="flex items-center gap-0.5 text-[10px] text-primary hover:underline">
+                  <button onClick={() => openLightbox(d.proof_url!)} className="flex items-center gap-0.5 text-[10px] text-primary hover:underline">
                     <Image size={10} /> Proof
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
@@ -526,9 +536,9 @@ const DonationsPage: React.FC = () => {
               <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
                 <p className="font-bold text-destructive">{fmt(e.amount)}</p>
                 {e.proof_url && (
-                  <a href={e.proof_url} target="_blank" rel="noreferrer" className="flex items-center gap-0.5 text-[10px] text-primary hover:underline">
+                  <button onClick={() => openLightbox(e.proof_url!)} className="flex items-center gap-0.5 text-[10px] text-primary hover:underline">
                     <Image size={10} /> Proof
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
@@ -547,6 +557,7 @@ const DonationsPage: React.FC = () => {
         qrCodeUrl={qrCodeUrl}
         onSubmit={(d) => addDonationMutation.mutate(d)}
         loading={addDonationMutation.isPending}
+        onZoomQr={openLightbox}
       />
 
       <AddExpenseDialog
@@ -657,7 +668,8 @@ const AddDonationDialog: React.FC<{
   campaigns: Campaign[]; selectedCampaign: Campaign | null;
   villageId: string; upiId: string | null; qrCodeUrl: string | null;
   onSubmit: (d: Record<string, unknown>) => void; loading: boolean;
-}> = ({ open, onClose, campaigns, selectedCampaign, villageId, upiId, qrCodeUrl, onSubmit, loading }) => {
+  onZoomQr?: (url: string) => void;
+}> = ({ open, onClose, campaigns, selectedCampaign, villageId, upiId, qrCodeUrl, onSubmit, loading, onZoomQr }) => {
   const getInitialForm = (campaign: Campaign | null) => ({
     donor_name: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'),
     payment_method: 'cash', campaign_id: campaign?.id ?? '',
@@ -731,7 +743,19 @@ const AddDonationDialog: React.FC<{
           {/* UPI / QR info when selected */}
           {(form.payment_method === 'upi' || form.payment_method === 'scanner') && (upiId || qrCodeUrl) && (
             <div className="bg-success/10 border border-success/20 rounded-xl p-3 flex gap-3 items-start">
-              {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20 rounded-lg object-contain border border-border" />}
+              {qrCodeUrl && (
+                <button
+                  type="button"
+                  onClick={() => onZoomQr?.(qrCodeUrl)}
+                  className="group relative flex-shrink-0"
+                  title="Tap to enlarge"
+                >
+                  <img src={qrCodeUrl} alt="QR" className="w-20 h-20 rounded-lg object-contain border border-border group-hover:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn size={16} className="text-primary" />
+                  </div>
+                </button>
+              )}
               <div>
                 {upiId && (
                   <>
@@ -739,7 +763,9 @@ const AddDonationDialog: React.FC<{
                     <p className="font-mono font-semibold text-foreground text-sm">{upiId}</p>
                   </>
                 )}
-                <p className="text-xs text-muted-foreground mt-1.5">Pay, then upload screenshot below</p>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {qrCodeUrl ? 'Tap QR to enlarge · Pay, then upload screenshot below' : 'Pay, then upload screenshot below'}
+                </p>
               </div>
             </div>
           )}
