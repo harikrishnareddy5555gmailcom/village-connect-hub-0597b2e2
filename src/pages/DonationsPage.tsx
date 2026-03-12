@@ -741,7 +741,19 @@ const AddDonationDialog: React.FC<{
           {/* UPI / QR info when selected */}
           {(form.payment_method === 'upi' || form.payment_method === 'scanner') && (upiId || qrCodeUrl) && (
             <div className="bg-success/10 border border-success/20 rounded-xl p-3 flex gap-3 items-start">
-              {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20 rounded-lg object-contain border border-border" />}
+              {qrCodeUrl && (
+                <button
+                  type="button"
+                  onClick={() => setLightbox({ images: [qrCodeUrl], index: 0 })}
+                  className="group relative flex-shrink-0"
+                  title="Tap to enlarge"
+                >
+                  <img src={qrCodeUrl} alt="QR" className="w-20 h-20 rounded-lg object-contain border border-border group-hover:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ZoomIn size={16} className="text-primary" />
+                  </div>
+                </button>
+              )}
               <div>
                 {upiId && (
                   <>
@@ -749,7 +761,9 @@ const AddDonationDialog: React.FC<{
                     <p className="font-mono font-semibold text-foreground text-sm">{upiId}</p>
                   </>
                 )}
-                <p className="text-xs text-muted-foreground mt-1.5">Pay, then upload screenshot below</p>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {qrCodeUrl ? 'Tap QR to enlarge · Pay, then upload screenshot below' : 'Pay, then upload screenshot below'}
+                </p>
               </div>
             </div>
           )}
