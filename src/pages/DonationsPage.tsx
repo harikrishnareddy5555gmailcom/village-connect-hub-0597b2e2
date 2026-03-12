@@ -449,9 +449,9 @@ const DonationsPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-success text-xs">{fmt(d.amount)}</span>
                             {d.proof_url && (
-                              <a href={d.proof_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-[10px]">
+                              <button onClick={() => openLightbox(d.proof_url!)} className="text-primary hover:text-primary/80">
                                 <Image size={12} />
-                              </a>
+                              </button>
                             )}
                           </div>
                         </div>
