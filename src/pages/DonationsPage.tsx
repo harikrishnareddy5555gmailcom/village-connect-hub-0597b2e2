@@ -667,7 +667,8 @@ const AddDonationDialog: React.FC<{
   campaigns: Campaign[]; selectedCampaign: Campaign | null;
   villageId: string; upiId: string | null; qrCodeUrl: string | null;
   onSubmit: (d: Record<string, unknown>) => void; loading: boolean;
-}> = ({ open, onClose, campaigns, selectedCampaign, villageId, upiId, qrCodeUrl, onSubmit, loading }) => {
+  onZoomQr?: (url: string) => void;
+}> = ({ open, onClose, campaigns, selectedCampaign, villageId, upiId, qrCodeUrl, onSubmit, loading, onZoomQr }) => {
   const getInitialForm = (campaign: Campaign | null) => ({
     donor_name: '', amount: '', date: format(new Date(), 'yyyy-MM-dd'),
     payment_method: 'cash', campaign_id: campaign?.id ?? '',
