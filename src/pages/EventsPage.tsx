@@ -3,20 +3,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Calendar, Plus, X, MapPin, Clock, Loader2, Users, Pencil, Trash2 } from 'lucide-react';
+import {
+  Calendar, Plus, X, MapPin, Clock, Loader2, Users, Pencil, Trash2,
+  ChevronDown, ChevronUp, ListChecks
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format, isPast } from 'date-fns';
@@ -34,13 +31,153 @@ interface Event {
   profiles?: { full_name: string } | null;
 }
 
+interface EventProgram {
+  id: string;
+  event_id: string;
+  title: string;
+  description: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  created_by: string;
+}
+
+// ---- Program sub-panel ----
+const ProgramsPanel: React.FC<{ event: Event; isAdmin: boolean; userId: string }> = ({ event, isAdmin, userId }) => {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const { currentVillage } = useVillage();
+
+  const { data: programs = [], isLoading } = useQuery({
+    queryKey: ['event-programs', event.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('event_programs')
+        .select('*')
+        .eq('event_id', event.id)
+        .order('start_time', { ascending: true });
+      return (data ?? []) as EventProgram[];
+    },
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      if (!title.trim()) throw new Error('Program title required');
+      const { error } = await (supabase as any).from('event_programs').insert({
+        event_id: event.id,
+        village_id: currentVillage!.id,
+        title: title.trim(),
+        description: desc.trim() || null,
+        start_time: startTime || null,
+        end_time: endTime || null,
+        created_by: userId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setTitle(''); setDesc(''); setStartTime(''); setEndTime(''); setShowForm(false);
+      qc.invalidateQueries({ queryKey: ['event-programs', event.id] });
+      toast.success('Program added!');
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('event_programs').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['event-programs', event.id] }),
+  });
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+          <ListChecks size={12} /> Programs / Schedule
+        </span>
+        {isAdmin && (
+          <button
+            onClick={() => setShowForm(f => !f)}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            <Plus size={11} /> Add Program
+          </button>
+        )}
+      </div>
+
+      {showForm && isAdmin && (
+        <div className="bg-muted/40 rounded-xl p-3 mb-3 space-y-2 border border-border">
+          <div>
+            <Label className="text-xs">Program Title *</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Welcome Speech" className="mt-1 h-8 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs">Start Time</Label>
+              <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="mt-1 h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">End Time</Label>
+              <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="mt-1 h-8 text-sm" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Description</Label>
+            <Textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Details..." className="mt-1 text-sm resize-none" rows={2} />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button size="sm" className="btn-primary-gradient flex-1 h-8 text-xs" onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>
+              {addMutation.isPending && <Loader2 size={12} className="animate-spin mr-1" />} Save
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-2"><Loader2 size={14} className="animate-spin text-muted-foreground" /></div>
+      ) : programs.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic py-1">No programs added yet.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {programs.map(p => (
+            <div key={p.id} className="flex items-start gap-2 bg-primary/5 rounded-lg px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">{p.title}</span>
+                  {(p.start_time || p.end_time) && (
+                    <span className="text-xs text-primary/80 flex items-center gap-0.5">
+                      <Clock size={10} />
+                      {p.start_time}{p.end_time ? ` – ${p.end_time}` : ''}
+                    </span>
+                  )}
+                </div>
+                {p.description && <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>}
+              </div>
+              {isAdmin && (
+                <button onClick={() => deleteMutation.mutate(p.id)} className="text-muted-foreground hover:text-destructive p-0.5 flex-shrink-0">
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- Main Page ----
 const EventsPage: React.FC = () => {
   const { user, role, profile } = useAuth();
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
 
-  // Create form state
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,7 +185,6 @@ const EventsPage: React.FC = () => {
   const [eventTime, setEventTime] = useState('');
   const [location, setLocation] = useState('');
 
-  // Edit state
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -56,9 +192,8 @@ const EventsPage: React.FC = () => {
   const [editTime, setEditTime] = useState('');
   const [editLocation, setEditLocation] = useState('');
 
-  // Delete state
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
-
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
 
   const { data: events = [], isLoading } = useQuery({
@@ -81,10 +216,8 @@ const EventsPage: React.FC = () => {
       const { error } = await (supabase as any).from('events').insert({
         village_id: currentVillage!.id,
         created_by: user!.id,
-        title,
-        description: description || null,
-        event_date: dateTime,
-        location_tag: location || null,
+        title, description: description || null,
+        event_date: dateTime, location_tag: location || null,
       });
       if (error) throw error;
     },
@@ -101,10 +234,8 @@ const EventsPage: React.FC = () => {
       if (!editingEvent || !editTitle.trim() || !editDate) throw new Error('Title and date are required');
       const dateTime = editTime ? `${editDate}T${editTime}` : `${editDate}T00:00`;
       const { error } = await (supabase as any).from('events').update({
-        title: editTitle,
-        description: editDescription || null,
-        event_date: dateTime,
-        location_tag: editLocation || null,
+        title: editTitle, description: editDescription || null,
+        event_date: dateTime, location_tag: editLocation || null,
       }).eq('id', editingEvent.id);
       if (error) throw error;
     },
@@ -122,13 +253,9 @@ const EventsPage: React.FC = () => {
       const { error } = await (supabase as any).from('events').delete().eq('id', id);
       if (error) throw error;
       await writeAuditLog({
-        action_type: 'delete',
-        entity_type: 'event',
-        entity_id: id,
-        entity_name: ev?.title,
-        performed_by: user!.id,
-        performed_by_name: profile?.full_name,
-        village_id: currentVillage?.id,
+        action_type: 'delete', entity_type: 'event', entity_id: id,
+        entity_name: ev?.title, performed_by: user!.id,
+        performed_by_name: profile?.full_name, village_id: currentVillage?.id,
       });
     },
     onSuccess: () => {
@@ -150,8 +277,8 @@ const EventsPage: React.FC = () => {
     setShowForm(false);
   };
 
-  const upcoming = events.filter((e) => !isPast(new Date(e.event_date)));
-  const past = events.filter((e) => isPast(new Date(e.event_date)));
+  const upcoming = events.filter(e => !isPast(new Date(e.event_date)));
+  const past = events.filter(e => isPast(new Date(e.event_date)));
   const displayed = tab === 'upcoming' ? upcoming : past;
 
   return (
@@ -218,9 +345,7 @@ const EventsPage: React.FC = () => {
         <div className="vcp-card p-5 mb-5 border-2 border-primary/30 animate-fade-in-up">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-foreground">Edit Event</h3>
-            <Button size="sm" variant="ghost" onClick={() => setEditingEvent(null)}>
-              <X size={14} />
-            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditingEvent(null)}><X size={14} /></Button>
           </div>
           <div className="space-y-3">
             <div>
@@ -291,77 +416,86 @@ const EventsPage: React.FC = () => {
           {displayed.map((ev) => {
             const date = new Date(ev.event_date);
             const isEvenPast = isPast(date);
-            const isBeingEdited = editingEvent?.id === ev.id;
+            const isExpanded = expandedId === ev.id;
             return (
               <div key={ev.id} className={cn(
-                "vcp-card p-4 flex gap-4 transition-all",
-                isEvenPast && "opacity-70",
-                isBeingEdited && "ring-2 ring-primary/40"
+                "vcp-card transition-all",
+                isEvenPast && "opacity-80",
+                editingEvent?.id === ev.id && "ring-2 ring-primary/40"
               )}>
-                {/* Date Block */}
-                <div className={cn(
-                  "w-14 flex-shrink-0 rounded-xl flex flex-col items-center justify-center py-2 text-center",
-                  isEvenPast ? "bg-muted" : "bg-primary/10"
-                )}>
-                  <span className={cn("text-2xl font-bold leading-none", isEvenPast ? "text-muted-foreground" : "text-primary")}>
-                    {format(date, 'd')}
-                  </span>
-                  <span className={cn("text-xs font-medium uppercase mt-0.5", isEvenPast ? "text-muted-foreground" : "text-primary/70")}>
-                    {format(date, 'MMM')}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-sm text-foreground">{ev.title}</h4>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                    <span className="flex items-center gap-1"><Clock size={11} />{format(date, 'h:mm a')}</span>
-                    {ev.location_tag && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location_tag}</span>}
-                    {ev.profiles?.full_name && <span className="flex items-center gap-1"><Users size={11} />By {ev.profiles.full_name}</span>}
-                  </div>
-                  {ev.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{ev.description}</p>}
-                </div>
-                <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                  {!isEvenPast && (
-                    <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 font-medium">
-                      Upcoming
+                {/* Main row */}
+                <div
+                  className="p-4 flex gap-4 cursor-pointer"
+                  onClick={() => setExpandedId(isExpanded ? null : ev.id)}
+                >
+                  {/* Date Block */}
+                  <div className={cn(
+                    "w-14 flex-shrink-0 rounded-xl flex flex-col items-center justify-center py-2 text-center",
+                    isEvenPast ? "bg-muted" : "bg-primary/10"
+                  )}>
+                    <span className={cn("text-2xl font-bold leading-none", isEvenPast ? "text-muted-foreground" : "text-primary")}>
+                      {format(date, 'd')}
                     </span>
-                  )}
-                  {isAdmin && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => startEdit(ev)}
-                        title="Edit event"
-                      >
-                        <Pencil size={13} />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleteEventId(ev.id)}
-                        title="Delete event"
-                      >
-                        <Trash2 size={13} />
-                      </Button>
+                    <span className={cn("text-xs font-medium uppercase mt-0.5", isEvenPast ? "text-muted-foreground" : "text-primary/70")}>
+                      {format(date, 'MMM')}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm text-foreground">{ev.title}</h4>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1"><Clock size={11} />{format(date, 'h:mm a')}</span>
+                      {ev.location_tag && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location_tag}</span>}
+                      {ev.profiles?.full_name && <span className="flex items-center gap-1"><Users size={11} />By {ev.profiles.full_name}</span>}
                     </div>
-                  )}
+                    {ev.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{ev.description}</p>}
+                  </div>
+                  <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                    {!isEvenPast && (
+                      <span className="text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 font-medium">
+                        Upcoming
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <button className="text-muted-foreground p-1 hover:text-foreground transition-colors">
+                        {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                      </button>
+                      {isAdmin && (
+                        <>
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={e => { e.stopPropagation(); startEdit(ev); }} title="Edit event"
+                          >
+                            <Pencil size={13} />
+                          </Button>
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={e => { e.stopPropagation(); setDeleteEventId(ev.id); }} title="Delete event"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
+
+                {/* Programs panel — expands on click */}
+                {isExpanded && (
+                  <div className="px-4 pb-4">
+                    <ProgramsPanel event={ev} isAdmin={isAdmin} userId={user!.id} />
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deleteEventId} onOpenChange={open => !open && setDeleteEventId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Event?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the event. This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete the event and all its programs.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
