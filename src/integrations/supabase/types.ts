@@ -68,6 +68,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          image_urls: string[] | null
           is_verified: boolean
           latitude: number | null
           longitude: number | null
@@ -84,6 +85,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_urls?: string[] | null
           is_verified?: boolean
           latitude?: number | null
           longitude?: number | null
@@ -100,6 +102,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_urls?: string[] | null
           is_verified?: boolean
           latitude?: number | null
           longitude?: number | null
@@ -511,6 +514,60 @@ export type Database = {
           },
           {
             foreignKeyName: "donations_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_programs: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          end_time: string | null
+          event_id: string
+          id: string
+          start_time: string | null
+          title: string
+          updated_at: string
+          village_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_time?: string | null
+          event_id: string
+          id?: string
+          start_time?: string | null
+          title: string
+          updated_at?: string
+          village_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_time?: string | null
+          event_id?: string
+          id?: string
+          start_time?: string | null
+          title?: string
+          updated_at?: string
+          village_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_programs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_programs_village_id_fkey"
             columns: ["village_id"]
             isOneToOne: false
             referencedRelation: "villages"
