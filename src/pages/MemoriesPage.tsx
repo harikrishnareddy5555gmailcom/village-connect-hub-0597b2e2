@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Camera, MapPin, Send, Trash2, X, Loader2, ImagePlus, BookHeart, Heart, MessageCircle } from 'lucide-react';
+import { Camera, MapPin, Trash2, X, Loader2, ImagePlus, BookHeart, Play, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { compressImages } from '@/lib/imageCompression';
+import MediaLightbox, { MediaItem } from '@/components/MediaLightbox';
 
 interface Memory {
   id: string;
@@ -21,6 +22,15 @@ interface Memory {
   profiles: { full_name: string; avatar_url: string | null } | null;
 }
 
+// Detect if a URL is a video by extension
+function isVideo(url: string) {
+  return /\.(mp4|mov|webm|ogg|m4v)(\?|$)/i.test(url);
+}
+
+function toMediaItems(urls: string[]): MediaItem[] {
+  return urls.map(url => ({ url, type: isVideo(url) ? 'video' : 'image' }));
+}
+
 const MemoriesPage: React.FC = () => {
   const { user, profile, role } = useAuth();
   const { currentVillage } = useVillage();
@@ -29,10 +39,10 @@ const MemoriesPage: React.FC = () => {
   const [caption, setCaption] = useState('');
   const [locationTag, setLocationTag] = useState('');
   const [showLocation, setShowLocation] = useState(false);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video' }[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ items: MediaItem[]; index: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
@@ -51,38 +61,51 @@ const MemoriesPage: React.FC = () => {
     enabled: !!currentVillage?.id,
   });
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []).slice(0, 6);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).slice(0, 6 - mediaFiles.length);
     if (!files.length) return;
+    const valid = files.filter(f => f.size <= 50 * 1024 * 1024);
+    if (valid.length < files.length) toast.error('Some files exceed 50MB limit and were skipped');
 
-    // Validate file sizes (max 10MB each)
-    const valid = files.filter(f => f.size <= 10 * 1024 * 1024);
-    if (valid.length < files.length) {
-      toast.error('Some files exceed 10MB limit and were skipped');
-    }
-
-    setImageFiles(prev => [...prev, ...valid].slice(0, 6));
-    const previews = valid.map(f => URL.createObjectURL(f));
-    setImagePreviews(prev => [...prev, ...previews].slice(0, 6));
-
-    // Reset input
+    const newPreviews = valid.map(f => ({
+      url: URL.createObjectURL(f),
+      type: f.type.startsWith('video/') ? 'video' as const : 'image' as const,
+    }));
+    setMediaFiles(prev => [...prev, ...valid].slice(0, 6));
+    setMediaPreviews(prev => [...prev, ...newPreviews].slice(0, 6));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeImage = (i: number) => {
-    URL.revokeObjectURL(imagePreviews[i]);
-    setImageFiles(f => f.filter((_, idx) => idx !== i));
-    setImagePreviews(p => p.filter((_, idx) => idx !== i));
+  const removeMedia = (i: number) => {
+    URL.revokeObjectURL(mediaPreviews[i].url);
+    setMediaFiles(f => f.filter((_, idx) => idx !== i));
+    setMediaPreviews(p => p.filter((_, idx) => idx !== i));
   };
 
-  const uploadImages = async (): Promise<string[]> => {
-    // Compress all images first
-    const compressed = await compressImages(imageFiles, 'memory');
+  const uploadMedia = async (): Promise<string[]> => {
     const urls: string[] = [];
+    const imageFiles = mediaFiles.filter(f => f.type.startsWith('image/'));
+    const videoFiles = mediaFiles.filter(f => f.type.startsWith('video/'));
 
+    // Compress images
+    const compressed = await compressImages(imageFiles, 'memory');
     for (const file of compressed) {
-      const path = `${user!.id}/memories/${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
+      const ext = 'webp';
+      const path = `${user!.id}/memories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from('memory-gallery').upload(path, file, { upsert: false });
+      if (error) throw new Error(error.message);
+      const { data } = supabase.storage.from('memory-gallery').getPublicUrl(path);
+      urls.push(data.publicUrl);
+    }
+
+    // Upload videos raw
+    for (const file of videoFiles) {
+      const ext = file.name.split('.').pop() ?? 'mp4';
+      const path = `${user!.id}/memories/vid-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('memory-gallery').upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
       if (error) throw new Error(error.message);
       const { data } = supabase.storage.from('memory-gallery').getPublicUrl(path);
       urls.push(data.publicUrl);
@@ -92,15 +115,15 @@ const MemoriesPage: React.FC = () => {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      if (!imageFiles.length && !caption.trim()) throw new Error('Add at least one image or a caption');
+      if (!mediaFiles.length && !caption.trim()) throw new Error('Add at least one photo/video or a caption');
       setUploading(true);
-      const imageUrls = await uploadImages();
+      const mediaUrls = await uploadMedia();
       setUploading(false);
       const { error } = await (supabase as any).from('memories').insert({
         village_id: currentVillage!.id,
         author_id: user!.id,
         caption: caption.trim() || null,
-        image_urls: imageUrls,
+        image_urls: mediaUrls,
         location_tag: locationTag.trim() || null,
       });
       if (error) throw error;
@@ -109,9 +132,9 @@ const MemoriesPage: React.FC = () => {
       setCaption('');
       setLocationTag('');
       setShowLocation(false);
-      imageFiles.forEach((_, i) => URL.revokeObjectURL(imagePreviews[i]));
-      setImageFiles([]);
-      setImagePreviews([]);
+      mediaPreviews.forEach(p => URL.revokeObjectURL(p.url));
+      setMediaFiles([]);
+      setMediaPreviews([]);
       qc.invalidateQueries({ queryKey: ['memories'] });
       toast.success('Memory shared! 📸');
     },
@@ -156,15 +179,22 @@ const MemoriesPage: React.FC = () => {
               className="w-full resize-none bg-muted/50 rounded-xl p-3 text-sm text-foreground placeholder:text-muted-foreground border-0 outline-none focus:ring-1 focus:ring-primary/50 min-h-[70px]"
             />
 
-            {/* Image Previews */}
-            {imagePreviews.length > 0 && (
-              <div className={cn("mt-2 gap-1.5", imagePreviews.length === 1 ? "flex" : "grid grid-cols-3")}>
-                {imagePreviews.map((src, i) => (
-                  <div key={i} className="relative group rounded-lg overflow-hidden">
-                    <img src={src} alt="" className="w-full h-24 object-cover" />
+            {/* Media Previews */}
+            {mediaPreviews.length > 0 && (
+              <div className={cn("mt-2 gap-1.5", mediaPreviews.length === 1 ? "flex" : "grid grid-cols-3")}>
+                {mediaPreviews.map((item, i) => (
+                  <div key={i} className="relative group rounded-lg overflow-hidden bg-black">
+                    {item.type === 'video' ? (
+                      <div className="w-full h-24 flex items-center justify-center bg-muted/60">
+                        <Video size={24} className="text-primary" />
+                        <span className="text-xs text-muted-foreground ml-1.5">Video</span>
+                      </div>
+                    ) : (
+                      <img src={item.url} alt="" className="w-full h-24 object-cover" />
+                    )}
                     <button
-                      onClick={() => removeImage(i)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeMedia(i)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X size={10} className="text-white" />
                     </button>
@@ -173,10 +203,9 @@ const MemoriesPage: React.FC = () => {
               </div>
             )}
 
-            {/* Upload hint */}
-            {imageFiles.length > 0 && (
+            {mediaPreviews.length > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                📦 Images will be auto-compressed for faster upload
+                📦 Images will be compressed · Videos uploaded as-is
               </p>
             )}
 
@@ -205,19 +234,26 @@ const MemoriesPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={imagePreviews.length >= 6}
-                  className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", imagePreviews.length >= 6 && "opacity-40 cursor-not-allowed")}
-                  title="Add photos (max 6, 10MB each)"
+                  disabled={mediaPreviews.length >= 6}
+                  className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", mediaPreviews.length >= 6 && "opacity-40 cursor-not-allowed")}
+                  title="Add photos or videos (max 6)"
                 >
                   <ImagePlus size={16} />
                 </button>
-                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
               </div>
               <Button
                 size="sm"
                 className="btn-primary-gradient text-xs"
                 onClick={() => addMutation.mutate()}
-                disabled={isPending || (!caption.trim() && imageFiles.length === 0)}
+                disabled={isPending || (!caption.trim() && mediaFiles.length === 0)}
               >
                 {isPending
                   ? <><Loader2 size={13} className="animate-spin mr-1" />{uploading ? 'Uploading...' : 'Sharing...'}</>
@@ -229,16 +265,12 @@ const MemoriesPage: React.FC = () => {
       </div>
 
       {/* Lightbox */}
-      {lightboxSrc && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setLightboxSrc(null)}
-        >
-          <img src={lightboxSrc} alt="" className="max-w-full max-h-full rounded-xl object-contain" />
-          <button className="absolute top-16 right-4 sm:top-4 text-white/80 hover:text-white" onClick={() => setLightboxSrc(null)}>
-            <X size={28} />
-          </button>
-        </div>
+      {lightbox && (
+        <MediaLightbox
+          items={lightbox.items}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
       )}
 
       {/* Memories Grid */}
@@ -252,69 +284,91 @@ const MemoriesPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {memories.map(memory => (
-            <div key={memory.id} className="vcp-card p-4">
-              {/* Author */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <Avatar className="w-9 h-9">
-                    <AvatarImage src={memory.profiles?.avatar_url ?? ''} />
-                    <AvatarFallback className="bg-primary/15 text-primary font-bold text-sm">
-                      {memory.profiles?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold text-sm text-foreground">{memory.profiles?.full_name ?? 'Unknown'}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatDistanceToNow(new Date(memory.created_at), { addSuffix: true })}</span>
-                      {memory.location_tag && (
-                        <><span>·</span><MapPin size={11} /><span>{memory.location_tag}</span></>
-                      )}
+          {memories.map(memory => {
+            const mediaItems = toMediaItems(memory.image_urls);
+            return (
+              <div key={memory.id} className="vcp-card p-4">
+                {/* Author */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="w-9 h-9">
+                      <AvatarImage src={memory.profiles?.avatar_url ?? ''} />
+                      <AvatarFallback className="bg-primary/15 text-primary font-bold text-sm">
+                        {memory.profiles?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">{memory.profiles?.full_name ?? 'Unknown'}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatDistanceToNow(new Date(memory.created_at), { addSuffix: true })}</span>
+                        {memory.location_tag && (
+                          <><span>·</span><MapPin size={11} /><span>{memory.location_tag}</span></>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {(user?.id === memory.author_id || isAdmin) && (
+                    <button
+                      onClick={() => deleteMutation.mutate(memory.id)}
+                      className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
+                      title="Delete memory"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
-                {(user?.id === memory.author_id || isAdmin) && (
-                  <button
-                    onClick={() => deleteMutation.mutate(memory.id)}
-                    className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
-                    title="Delete memory"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+
+                {memory.caption && (
+                  <p className="text-sm text-foreground leading-relaxed mb-3">{memory.caption}</p>
+                )}
+
+                {/* Media Grid */}
+                {mediaItems.length > 0 && (
+                  <div className={cn(
+                    "rounded-xl overflow-hidden",
+                    mediaItems.length === 1 && "aspect-video",
+                    mediaItems.length === 2 && "grid grid-cols-2 gap-0.5",
+                    mediaItems.length >= 3 && "grid grid-cols-3 gap-0.5",
+                  )}>
+                    {mediaItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "relative overflow-hidden cursor-pointer group",
+                          mediaItems.length === 1 ? "h-full" : "h-40",
+                          "bg-muted"
+                        )}
+                        onClick={() => setLightbox({ items: mediaItems, index: i })}
+                      >
+                        {item.type === 'video' ? (
+                          <div className="w-full h-full flex items-center justify-center bg-black/80 relative">
+                            <video
+                              src={item.url}
+                              className="w-full h-full object-cover opacity-60"
+                              muted
+                              preload="metadata"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:bg-white transition-colors">
+                                <Play size={20} className="text-black ml-0.5" />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={item.url}
+                            alt=""
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-
-              {/* Caption */}
-              {memory.caption && (
-                <p className="text-sm text-foreground leading-relaxed mb-3">{memory.caption}</p>
-              )}
-
-              {/* Images */}
-              {memory.image_urls.length > 0 && (
-                <div className={cn(
-                  "rounded-xl overflow-hidden cursor-pointer",
-                  memory.image_urls.length === 1 && "aspect-video",
-                  memory.image_urls.length === 2 && "grid grid-cols-2 gap-0.5",
-                  memory.image_urls.length >= 3 && "grid grid-cols-3 gap-0.5",
-                )}>
-                  {memory.image_urls.map((url, i) => (
-                    <div
-                      key={i}
-                      className={cn("relative overflow-hidden", memory.image_urls.length === 1 ? "h-full" : "h-40")}
-                      onClick={() => setLightboxSrc(url)}
-                    >
-                      <img
-                        src={url}
-                        alt=""
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
