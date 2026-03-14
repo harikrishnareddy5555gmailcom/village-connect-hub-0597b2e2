@@ -62,6 +62,8 @@ const BusinessDirectoryPage: React.FC = () => {
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
+  // Only admin/super_admin can delete businesses (not moderator)
+  const canDeleteBusiness = role === 'admin' || role === 'super_admin';
 
   const [showForm, setShowForm] = useState(false);
   const [editingBiz, setEditingBiz] = useState<any | null>(null);
@@ -527,6 +529,14 @@ const BusinessDirectoryPage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Creator info */}
+                  {b.profiles && (
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground">
+                      <span>Added by</span>
+                      <span className="font-medium text-foreground">{b.profiles.full_name}</span>
+                    </div>
+                  )}
+
                   {/* Actions */}
                   <div className="flex gap-2 mt-3">
                     {canEdit(b) && (
@@ -541,7 +551,7 @@ const BusinessDirectoryPage: React.FC = () => {
                         <CheckCircle size={12} className="mr-1" />Verify
                       </Button>
                     )}
-                    {isAdmin && (
+                    {canDeleteBusiness && (
                       <Button size="sm" variant="outline" className="text-xs h-7 border-destructive text-destructive hover:bg-destructive/10 px-2"
                         onClick={() => setDeleteBusinessId(b.id)}>
                         <Trash2 size={12} />

@@ -92,12 +92,6 @@ const MediaLightbox: React.FC<MediaLightboxProps> = ({ items, initialIndex = 0, 
               )}
             </>
           )}
-          <button
-            onClick={onClose}
-            className="text-white/70 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors ml-2"
-          >
-            <X size={22} />
-          </button>
         </div>
       </div>
 
@@ -176,6 +170,15 @@ const MediaLightbox: React.FC<MediaLightboxProps> = ({ items, initialIndex = 0, 
           ))}
         </div>
       )}
+
+      {/* Large floating close button — always visible, safe zone below header */}
+      <button
+        onClick={onClose}
+        className="fixed top-16 right-4 sm:top-4 sm:right-4 z-[10000] w-11 h-11 rounded-full bg-black/80 border border-white/20 hover:bg-white/20 flex items-center justify-center text-white shadow-xl transition-all"
+        title="Close (Esc)"
+      >
+        <X size={22} />
+      </button>
     </div>
   );
 };

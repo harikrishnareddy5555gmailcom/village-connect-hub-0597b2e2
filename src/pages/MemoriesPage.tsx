@@ -64,8 +64,12 @@ const MemoriesPage: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).slice(0, 6 - mediaFiles.length);
     if (!files.length) return;
-    const valid = files.filter(f => f.size <= 50 * 1024 * 1024);
-    if (valid.length < files.length) toast.error('Some files exceed 50MB limit and were skipped');
+    // Images max 20MB, videos max 500MB
+    const valid = files.filter(f => {
+      if (f.type.startsWith('video/')) return f.size <= 500 * 1024 * 1024;
+      return f.size <= 20 * 1024 * 1024;
+    });
+    if (valid.length < files.length) toast.error('Some files exceed limits (images: 20MB, videos: 500MB)');
 
     const newPreviews = valid.map(f => ({
       url: URL.createObjectURL(f),
