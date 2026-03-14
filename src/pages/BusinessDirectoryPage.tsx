@@ -62,6 +62,8 @@ const BusinessDirectoryPage: React.FC = () => {
   const { currentVillage } = useVillage();
   const queryClient = useQueryClient();
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
+  // Only admin/super_admin can delete businesses (not moderator)
+  const canDeleteBusiness = role === 'admin' || role === 'super_admin';
 
   const [showForm, setShowForm] = useState(false);
   const [editingBiz, setEditingBiz] = useState<any | null>(null);

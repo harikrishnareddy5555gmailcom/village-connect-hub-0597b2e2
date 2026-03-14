@@ -263,7 +263,7 @@ const MapPage: React.FC = () => {
             {nearMeLoading ? <Loader2 size={10} className="animate-spin" /> : <Navigation size={10} />}
             Near Me
           </button>
-          {isAdmin && !editingPin && (
+          {canEditPin && !editingPin && (
             <button
               onClick={handleStartEdit}
               className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 hover:bg-primary/20 transition-colors"
