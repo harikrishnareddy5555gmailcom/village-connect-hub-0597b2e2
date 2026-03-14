@@ -252,7 +252,7 @@ const SettingsPage: React.FC = () => {
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                disabled={!isSuperAdmin}
+                disabled={!isAdmin}
                 className="mt-1"
               />
             </div>
@@ -264,7 +264,7 @@ const SettingsPage: React.FC = () => {
                   type="number"
                   value={population}
                   onChange={e => setPopulation(e.target.value)}
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   className="pl-8"
                 />
               </div>
@@ -273,12 +273,12 @@ const SettingsPage: React.FC = () => {
               <Label className="text-sm">District</Label>
               <div className="relative mt-1">
                 <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input value={district} onChange={e => setDistrict(e.target.value)} disabled={!isSuperAdmin} className="pl-8" />
+                <Input value={district} onChange={e => setDistrict(e.target.value)} disabled={!isAdmin} className="pl-8" />
               </div>
             </div>
             <div>
               <Label className="text-sm">State</Label>
-              <Input value={state} onChange={e => setState(e.target.value)} disabled={!isSuperAdmin} className="mt-1" />
+              <Input value={state} onChange={e => setState(e.target.value)} disabled={!isAdmin} className="mt-1" />
             </div>
           </div>
           <div>
@@ -286,20 +286,20 @@ const SettingsPage: React.FC = () => {
             <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              disabled={!isSuperAdmin}
+              disabled={!isAdmin}
               rows={3}
               className="mt-1 resize-none"
               placeholder="Brief description of the village..."
             />
           </div>
 
-          {isSuperAdmin ? (
+          {isAdmin ? (
             <Button className="btn-primary-gradient" onClick={() => updateVillage.mutate()} disabled={updateVillage.isPending}>
               {updateVillage.isPending ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Save size={14} className="mr-2" />}
               Save Changes
             </Button>
           ) : (
-            <p className="text-xs text-muted-foreground italic">Only Super Admin can edit village settings.</p>
+            <p className="text-xs text-muted-foreground italic">Only admins can edit village settings.</p>
           )}
         </div>
       </div>
