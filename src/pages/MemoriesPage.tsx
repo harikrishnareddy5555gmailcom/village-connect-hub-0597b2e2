@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Camera, MapPin, Trash2, X, Loader2, ImagePlus, BookHeart, Play, Video } from 'lucide-react';
+import { Camera, MapPin, Trash2, X, Loader2, ImagePlus, BookHeart, Play, Video, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
@@ -22,13 +22,20 @@ interface Memory {
   profiles: { full_name: string; avatar_url: string | null } | null;
 }
 
-// Detect if a URL is a video by extension
 function isVideo(url: string) {
   return /\.(mp4|mov|webm|ogg|m4v)(\?|$)/i.test(url);
 }
 
 function toMediaItems(urls: string[]): MediaItem[] {
   return urls.map(url => ({ url, type: isVideo(url) ? 'video' : 'image' }));
+}
+
+interface UploadProgress {
+  loaded: number;
+  total: number;
+  fileName: string;
+  fileIndex: number;
+  totalFiles: number;
 }
 
 const MemoriesPage: React.FC = () => {
@@ -42,7 +49,12 @@ const MemoriesPage: React.FC = () => {
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<{ url: string; type: 'image' | 'video' }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [lightbox, setLightbox] = useState<{ items: MediaItem[]; index: number } | null>(null);
+
+  // Abort controller ref for cancellation
+  const abortRef = useRef<AbortController | null>(null);
+  const isCancelledRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
@@ -86,33 +98,104 @@ const MemoriesPage: React.FC = () => {
     setMediaPreviews(p => p.filter((_, idx) => idx !== i));
   };
 
+  const handleCancel = useCallback(() => {
+    isCancelledRef.current = true;
+    abortRef.current?.abort();
+    setUploading(false);
+    setUploadProgress(null);
+    toast.info('Upload cancelled');
+  }, []);
+
+  /**
+   * Upload a file with XMLHttpRequest so we can track progress + cancel.
+   * Returns the public URL.
+   */
+  const uploadWithProgress = useCallback(
+    (file: File, path: string, bucket: string, fileIndex: number, totalFiles: number): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        if (isCancelledRef.current) { reject(new Error('cancelled')); return; }
+
+        // Get upload URL via Supabase signed URL approach
+        // We'll use fetch with manual progress tracking via XHR
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
+        const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const { data: { session } } = { data: { session: null as any } };
+
+        // Use XHR for progress
+        const xhr = new XMLHttpRequest();
+
+        // Store abort handle
+        const prevAbort = abortRef.current;
+        abortRef.current = new AbortController();
+        abortRef.current.signal.addEventListener('abort', () => xhr.abort());
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress({
+              loaded: e.loaded,
+              total: e.total,
+              fileName: file.name,
+              fileIndex,
+              totalFiles,
+            });
+          }
+        });
+
+        xhr.addEventListener('load', async () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+            resolve(data.publicUrl);
+          } else {
+            reject(new Error(`Upload failed: ${xhr.statusText}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('Upload network error')));
+        xhr.addEventListener('abort', () => reject(new Error('cancelled')));
+
+        xhr.open('POST', url);
+
+        // Get session for auth header
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (isCancelledRef.current) { xhr.abort(); reject(new Error('cancelled')); return; }
+          xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token ?? key}`);
+          xhr.setRequestHeader('x-upsert', 'false');
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          xhr.send(file);
+        });
+      });
+    },
+    [],
+  );
+
   const uploadMedia = async (): Promise<string[]> => {
     const urls: string[] = [];
+    isCancelledRef.current = false;
+
     const imageFiles = mediaFiles.filter(f => f.type.startsWith('image/'));
     const videoFiles = mediaFiles.filter(f => f.type.startsWith('video/'));
+    const totalFiles = imageFiles.length + videoFiles.length;
+    let fileIndex = 0;
 
-    // Compress images
+    // Compress images (no quality loss — just resize if oversized)
     const compressed = await compressImages(imageFiles, 'memory');
     for (const file of compressed) {
+      if (isCancelledRef.current) throw new Error('cancelled');
       const ext = 'webp';
       const path = `${user!.id}/memories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('memory-gallery').upload(path, file, { upsert: false });
-      if (error) throw new Error(error.message);
-      const { data } = supabase.storage.from('memory-gallery').getPublicUrl(path);
-      urls.push(data.publicUrl);
+      const publicUrl = await uploadWithProgress(file, path, 'memory-gallery', fileIndex, totalFiles);
+      urls.push(publicUrl);
+      fileIndex++;
     }
 
-    // Upload videos raw
+    // Upload videos as-is (NO compression — preserve quality)
     for (const file of videoFiles) {
+      if (isCancelledRef.current) throw new Error('cancelled');
       const ext = file.name.split('.').pop() ?? 'mp4';
       const path = `${user!.id}/memories/vid-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('memory-gallery').upload(path, file, {
-        upsert: false,
-        contentType: file.type,
-      });
-      if (error) throw new Error(error.message);
-      const { data } = supabase.storage.from('memory-gallery').getPublicUrl(path);
-      urls.push(data.publicUrl);
+      const publicUrl = await uploadWithProgress(file, path, 'memory-gallery', fileIndex, totalFiles);
+      urls.push(publicUrl);
+      fileIndex++;
     }
     return urls;
   };
@@ -123,6 +206,7 @@ const MemoriesPage: React.FC = () => {
       setUploading(true);
       const mediaUrls = await uploadMedia();
       setUploading(false);
+      setUploadProgress(null);
       const { error } = await (supabase as any).from('memories').insert({
         village_id: currentVillage!.id,
         author_id: user!.id,
@@ -142,7 +226,11 @@ const MemoriesPage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ['memories'] });
       toast.success('Memory shared! 📸');
     },
-    onError: (e: Error) => { setUploading(false); toast.error(e.message); },
+    onError: (e: Error) => {
+      setUploading(false);
+      setUploadProgress(null);
+      if (e.message !== 'cancelled') toast.error(e.message);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -154,6 +242,11 @@ const MemoriesPage: React.FC = () => {
   });
 
   const isPending = addMutation.isPending || uploading;
+
+  // Progress display
+  const progressPercent = uploadProgress
+    ? Math.round((uploadProgress.loaded / uploadProgress.total) * 100)
+    : 0;
 
   return (
     <div className="p-4 lg:p-6 max-w-2xl mx-auto space-y-4">
@@ -189,9 +282,12 @@ const MemoriesPage: React.FC = () => {
                 {mediaPreviews.map((item, i) => (
                   <div key={i} className="relative group rounded-lg overflow-hidden bg-black">
                     {item.type === 'video' ? (
-                      <div className="w-full h-24 flex items-center justify-center bg-muted/60">
-                        <Video size={24} className="text-primary" />
-                        <span className="text-xs text-muted-foreground ml-1.5">Video</span>
+                      <div className="w-full h-24 flex flex-col items-center justify-center bg-muted/60 gap-1">
+                        <Video size={20} className="text-primary" />
+                        <span className="text-xs text-muted-foreground">{mediaFiles[i]?.name?.slice(0, 14) ?? 'Video'}</span>
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {mediaFiles[i] ? (mediaFiles[i].size / (1024 * 1024)).toFixed(1) + ' MB' : ''}
+                        </span>
                       </div>
                     ) : (
                       <img src={item.url} alt="" className="w-full h-24 object-cover" />
@@ -207,10 +303,34 @@ const MemoriesPage: React.FC = () => {
               </div>
             )}
 
-            {mediaPreviews.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                📦 Images will be compressed · Videos uploaded as-is
-              </p>
+            {/* Upload Progress Bar */}
+            {isPending && uploadProgress && (
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 size={12} className="animate-spin text-primary" />
+                    Uploading {uploadProgress.fileIndex + 1} of {uploadProgress.totalFiles}
+                    {' · '}<span className="text-foreground font-medium truncate max-w-[120px]">{uploadProgress.fileName}</span>
+                  </span>
+                  <span className="font-semibold text-primary">{progressPercent}%</span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {(uploadProgress.loaded / (1024 * 1024)).toFixed(1)} MB / {(uploadProgress.total / (1024 * 1024)).toFixed(1)} MB
+                </p>
+              </div>
+            )}
+
+            {isPending && !uploadProgress && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 size={12} className="animate-spin text-primary" />
+                Preparing upload…
+              </div>
             )}
 
             {showLocation && (
@@ -229,21 +349,25 @@ const MemoriesPage: React.FC = () => {
 
             <div className="flex items-center justify-between mt-3">
               <div className="flex gap-1">
-                <button
-                  onClick={() => setShowLocation(!showLocation)}
-                  className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", showLocation && "text-primary bg-primary/10")}
-                  title="Add location"
-                >
-                  <MapPin size={16} />
-                </button>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={mediaPreviews.length >= 6}
-                  className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", mediaPreviews.length >= 6 && "opacity-40 cursor-not-allowed")}
-                  title="Add photos or videos (max 6)"
-                >
-                  <ImagePlus size={16} />
-                </button>
+                {!isPending && (
+                  <>
+                    <button
+                      onClick={() => setShowLocation(!showLocation)}
+                      className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", showLocation && "text-primary bg-primary/10")}
+                      title="Add location"
+                    >
+                      <MapPin size={16} />
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={mediaPreviews.length >= 6}
+                      className={cn("p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors", mediaPreviews.length >= 6 && "opacity-40 cursor-not-allowed")}
+                      title="Add photos or videos (max 6)"
+                    >
+                      <ImagePlus size={16} />
+                    </button>
+                  </>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -253,16 +377,29 @@ const MemoriesPage: React.FC = () => {
                   onChange={handleFileSelect}
                 />
               </div>
-              <Button
-                size="sm"
-                className="btn-primary-gradient text-xs"
-                onClick={() => addMutation.mutate()}
-                disabled={isPending || (!caption.trim() && mediaFiles.length === 0)}
-              >
-                {isPending
-                  ? <><Loader2 size={13} className="animate-spin mr-1" />{uploading ? 'Uploading...' : 'Sharing...'}</>
-                  : <><Camera size={13} className="mr-1" />Share Memory</>}
-              </Button>
+              <div className="flex gap-2">
+                {/* Cancel button during upload */}
+                {isPending && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={handleCancel}
+                  >
+                    <XCircle size={13} className="mr-1" /> Cancel
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  className="btn-primary-gradient text-xs"
+                  onClick={() => addMutation.mutate()}
+                  disabled={isPending || (!caption.trim() && mediaFiles.length === 0)}
+                >
+                  {isPending
+                    ? <><Loader2 size={13} className="animate-spin mr-1" />Uploading…</>
+                    : <><Camera size={13} className="mr-1" />Share Memory</>}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

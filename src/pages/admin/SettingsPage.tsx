@@ -51,11 +51,20 @@ const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
 
 const SettingsPage: React.FC = () => {
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const { currentVillage, refreshVillage } = useVillage();
   const queryClient = useQueryClient();
   const isSuperAdmin = role === 'super_admin';
   const isAdmin = role === 'admin' || isSuperAdmin;
+
+  // Password change state
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [name, setName] = useState(currentVillage?.name ?? '');
   const [description, setDescription] = useState(currentVillage?.description ?? '');
