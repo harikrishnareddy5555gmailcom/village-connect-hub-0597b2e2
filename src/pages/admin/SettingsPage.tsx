@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Trash2, Mail, MessageSquare, ShieldCheck } from 'lucide-react';
+import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Trash2, Mail, MessageSquare, ShieldCheck, KeyRound, Eye, EyeOff, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,11 +51,20 @@ const DEFAULT_LAT = 17.385;
 const DEFAULT_LNG = 78.4867;
 
 const SettingsPage: React.FC = () => {
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const { currentVillage, refreshVillage } = useVillage();
   const queryClient = useQueryClient();
   const isSuperAdmin = role === 'super_admin';
   const isAdmin = role === 'admin' || isSuperAdmin;
+
+  // Password change state
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [name, setName] = useState(currentVillage?.name ?? '');
   const [description, setDescription] = useState(currentVillage?.description ?? '');
@@ -243,7 +252,7 @@ const SettingsPage: React.FC = () => {
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                disabled={!isSuperAdmin}
+                disabled={!isAdmin}
                 className="mt-1"
               />
             </div>
@@ -255,7 +264,7 @@ const SettingsPage: React.FC = () => {
                   type="number"
                   value={population}
                   onChange={e => setPopulation(e.target.value)}
-                  disabled={!isSuperAdmin}
+                  disabled={!isAdmin}
                   className="pl-8"
                 />
               </div>
@@ -264,12 +273,12 @@ const SettingsPage: React.FC = () => {
               <Label className="text-sm">District</Label>
               <div className="relative mt-1">
                 <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input value={district} onChange={e => setDistrict(e.target.value)} disabled={!isSuperAdmin} className="pl-8" />
+                <Input value={district} onChange={e => setDistrict(e.target.value)} disabled={!isAdmin} className="pl-8" />
               </div>
             </div>
             <div>
               <Label className="text-sm">State</Label>
-              <Input value={state} onChange={e => setState(e.target.value)} disabled={!isSuperAdmin} className="mt-1" />
+              <Input value={state} onChange={e => setState(e.target.value)} disabled={!isAdmin} className="mt-1" />
             </div>
           </div>
           <div>
@@ -277,37 +286,35 @@ const SettingsPage: React.FC = () => {
             <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              disabled={!isSuperAdmin}
+              disabled={!isAdmin}
               rows={3}
               className="mt-1 resize-none"
               placeholder="Brief description of the village..."
             />
           </div>
 
-          {isSuperAdmin ? (
+          {isAdmin ? (
             <Button className="btn-primary-gradient" onClick={() => updateVillage.mutate()} disabled={updateVillage.isPending}>
               {updateVillage.isPending ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Save size={14} className="mr-2" />}
               Save Changes
             </Button>
           ) : (
-            <p className="text-xs text-muted-foreground italic">Only Super Admin can edit village settings.</p>
+            <p className="text-xs text-muted-foreground italic">Only admins can edit village settings.</p>
           )}
         </div>
       </div>
 
       {/* ── Password Recovery Methods ── (Super Admin only) */}
-      <div className="vcp-card p-5">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldCheck size={16} className="text-primary" />
-          <h2 className="font-semibold text-foreground">Password Recovery Methods</h2>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Control which recovery options are shown to users on the "Forgot Password" page. At least one must stay enabled.
-        </p>
+      {isSuperAdmin && (
+        <div className="vcp-card p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={16} className="text-primary" />
+            <h2 className="font-semibold text-foreground">Password Recovery Methods</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Control which recovery options are shown to users on the "Forgot Password" page. At least one must stay enabled.
+          </p>
 
-        {!isSuperAdmin ? (
-          <p className="text-xs text-muted-foreground italic">Only Super Admin can change recovery settings.</p>
-        ) : (
           <div className="space-y-4">
             {/* Email Link Toggle */}
             <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-muted/40 border border-border">
@@ -345,7 +352,6 @@ const SettingsPage: React.FC = () => {
                   <p className="text-sm font-semibold text-foreground">Via Mobile OTP</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Sends a 6-digit OTP to the user's registered mobile number via SMS.
-                    Requires an SMS provider (Twilio / MSG91) to be configured.
                   </p>
                 </div>
               </div>
@@ -362,7 +368,6 @@ const SettingsPage: React.FC = () => {
               />
             </div>
 
-            {/* Save button */}
             <Button
               className="btn-primary-gradient"
               onClick={() => saveResetMethods.mutate()}
@@ -374,8 +379,8 @@ const SettingsPage: React.FC = () => {
               }
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Village Location Map — editable by admin + super_admin */}
       <div className="vcp-card p-5">
@@ -519,6 +524,131 @@ const SettingsPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* ── Change Password ── */}
+      <div className="vcp-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <KeyRound size={16} className="text-primary" />
+            <h2 className="font-semibold text-foreground">Change Password</h2>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPwOpen(v => !v);
+              setCurrentPw(''); setNewPw(''); setConfirmPw('');
+            }}
+          >
+            {pwOpen ? <><X size={14} className="mr-1" />Cancel</> : <>Change</>}
+          </Button>
+        </div>
+
+        {!pwOpen && (
+          <p className="text-sm text-muted-foreground">Keep your account secure with a strong, unique password.</p>
+        )}
+
+        {pwOpen && (
+          <ChangePasswordForm
+            profile={profile}
+            onDone={() => { setPwOpen(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }}
+            currentPw={currentPw} setCurrentPw={setCurrentPw}
+            newPw={newPw} setNewPw={setNewPw}
+            confirmPw={confirmPw} setConfirmPw={setConfirmPw}
+            showCurrent={showCurrent} setShowCurrent={setShowCurrent}
+            showNew={showNew} setShowNew={setShowNew}
+            showConfirm={showConfirm} setShowConfirm={setShowConfirm}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Inline password change form ──────────────────────────────────────────────
+interface CPFProps {
+  profile: any;
+  onDone: () => void;
+  currentPw: string; setCurrentPw: (v: string) => void;
+  newPw: string; setNewPw: (v: string) => void;
+  confirmPw: string; setConfirmPw: (v: string) => void;
+  showCurrent: boolean; setShowCurrent: (v: boolean) => void;
+  showNew: boolean; setShowNew: (v: boolean) => void;
+  showConfirm: boolean; setShowConfirm: (v: boolean) => void;
+}
+
+const ChangePasswordForm: React.FC<CPFProps> = ({
+  profile, onDone,
+  currentPw, setCurrentPw, newPw, setNewPw, confirmPw, setConfirmPw,
+  showCurrent, setShowCurrent, showNew, setShowNew, showConfirm, setShowConfirm,
+}) => {
+  const passwordMutation = useMutation({
+    mutationFn: async () => {
+      const email = `${profile!.mobile_number}@villageconnect.app`;
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: currentPw });
+      if (signInErr) throw new Error('Current password is incorrect');
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success('Password changed!'); onDone(); },
+    onError: (err: Error) => toast.error(err.message ?? 'Failed to change password'),
+  });
+
+  const handleSubmit = () => {
+    if (!currentPw) return toast.error('Enter your current password');
+    if (newPw.length < 6) return toast.error('New password must be at least 6 characters');
+    if (newPw !== confirmPw) return toast.error('Passwords do not match');
+    if (newPw === currentPw) return toast.error('New password must differ from current');
+    passwordMutation.mutate();
+  };
+
+  const strengthLabel = newPw.length < 4 ? 'Weak' : newPw.length < 7 ? 'Fair' : newPw.length < 10 ? 'Good' : 'Strong';
+
+  return (
+    <div className="space-y-4">
+      {/* Current password */}
+      <div>
+        <Label className="text-sm">Current Password</Label>
+        <div className="relative mt-1">
+          <Input type={showCurrent ? 'text' : 'password'} value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="Enter current password" className="pr-10" />
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowCurrent(!showCurrent)}>
+            {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+      </div>
+      {/* New password */}
+      <div>
+        <Label className="text-sm">New Password</Label>
+        <div className="relative mt-1">
+          <Input type={showNew ? 'text' : 'password'} value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min. 6 characters" className="pr-10" />
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowNew(!showNew)}>
+            {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        {newPw.length > 0 && (
+          <div className="mt-1.5 flex gap-1 items-center">
+            {[1,2,3,4].map(i => (
+              <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${newPw.length >= i * 3 ? i <= 1 ? 'bg-destructive' : i <= 2 ? 'bg-warning' : i <= 3 ? 'bg-info' : 'bg-success' : 'bg-muted'}`} />
+            ))}
+            <span className="text-xs text-muted-foreground ml-1">{strengthLabel}</span>
+          </div>
+        )}
+      </div>
+      {/* Confirm password */}
+      <div>
+        <Label className="text-sm">Confirm New Password</Label>
+        <div className="relative mt-1">
+          <Input type={showConfirm ? 'text' : 'password'} value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Re-enter new password" className={`pr-10 ${confirmPw && confirmPw !== newPw ? 'border-destructive' : ''}`} />
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowConfirm(!showConfirm)}>
+            {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        {confirmPw && confirmPw !== newPw && <p className="text-xs text-destructive mt-1">Passwords do not match</p>}
+        {confirmPw && confirmPw === newPw && newPw.length >= 6 && <p className="text-xs text-success mt-1">✓ Passwords match</p>}
+      </div>
+      <Button className="btn-primary-gradient" onClick={handleSubmit} disabled={passwordMutation.isPending}>
+        {passwordMutation.isPending ? <><Loader2 size={14} className="mr-2 animate-spin" />Updating…</> : <><KeyRound size={14} className="mr-2" />Update Password</>}
+      </Button>
     </div>
   );
 };

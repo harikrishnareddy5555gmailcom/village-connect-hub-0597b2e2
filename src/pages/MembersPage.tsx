@@ -48,16 +48,12 @@ const MembersPage: React.FC = () => {
         .order('full_name', { ascending: true });
       if (error) throw error;
 
-      // Get super_admin user_ids to filter them out
-      const { data: superAdminRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'super_admin');
-
-      const superAdminIds = new Set((superAdminRoles ?? []).map((r: any) => r.user_id));
+      // Use security-definer function to get super_admin IDs (works for all users)
+      const { data: superAdminIds } = await (supabase as any).rpc('get_super_admin_ids');
+      const superAdminSet = new Set((superAdminIds ?? []) as string[]);
 
       // Filter out super admins from the public members list
-      return ((profiles ?? []) as Member[]).filter(p => !superAdminIds.has(p.user_id));
+      return ((profiles ?? []) as Member[]).filter(p => !superAdminSet.has(p.user_id));
     },
   });
 
