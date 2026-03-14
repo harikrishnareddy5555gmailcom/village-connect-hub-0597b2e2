@@ -99,6 +99,8 @@ const MapPage: React.FC = () => {
   const [complaintStatusFilter, setComplaintStatusFilter] = useState<'all' | 'reported' | 'in_progress' | 'resolved'>('all');
 
   const isAdmin = role === 'admin' || role === 'super_admin' || role === 'moderator';
+  // Only admin/super_admin can edit village map pin (not moderator, not user)
+  const canEditPin = role === 'admin' || role === 'super_admin';
   const [editingPin, setEditingPin] = useState(false);
   const [pendingLat, setPendingLat] = useState<number | null>(null);
   const [pendingLng, setPendingLng] = useState<number | null>(null);
