@@ -305,18 +305,16 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* ── Password Recovery Methods ── (Super Admin only) */}
-      <div className="vcp-card p-5">
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldCheck size={16} className="text-primary" />
-          <h2 className="font-semibold text-foreground">Password Recovery Methods</h2>
-        </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          Control which recovery options are shown to users on the "Forgot Password" page. At least one must stay enabled.
-        </p>
+      {isSuperAdmin && (
+        <div className="vcp-card p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck size={16} className="text-primary" />
+            <h2 className="font-semibold text-foreground">Password Recovery Methods</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Control which recovery options are shown to users on the "Forgot Password" page. At least one must stay enabled.
+          </p>
 
-        {!isSuperAdmin ? (
-          <p className="text-xs text-muted-foreground italic">Only Super Admin can change recovery settings.</p>
-        ) : (
           <div className="space-y-4">
             {/* Email Link Toggle */}
             <div className="flex items-start justify-between gap-4 p-3 rounded-xl bg-muted/40 border border-border">
@@ -354,7 +352,6 @@ const SettingsPage: React.FC = () => {
                   <p className="text-sm font-semibold text-foreground">Via Mobile OTP</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Sends a 6-digit OTP to the user's registered mobile number via SMS.
-                    Requires an SMS provider (Twilio / MSG91) to be configured.
                   </p>
                 </div>
               </div>
@@ -371,7 +368,6 @@ const SettingsPage: React.FC = () => {
               />
             </div>
 
-            {/* Save button */}
             <Button
               className="btn-primary-gradient"
               onClick={() => saveResetMethods.mutate()}
@@ -383,8 +379,8 @@ const SettingsPage: React.FC = () => {
               }
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Village Location Map — editable by admin + super_admin */}
       <div className="vcp-card p-5">
