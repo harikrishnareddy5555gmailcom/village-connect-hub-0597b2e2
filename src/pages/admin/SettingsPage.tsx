@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVillage } from '@/contexts/VillageContext';
-import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Trash2, Mail, MessageSquare, ShieldCheck } from 'lucide-react';
+import { Settings, Globe, Save, Loader2, MapPin, Users, Navigation, CheckCircle, Trash2, Mail, MessageSquare, ShieldCheck, KeyRound, Eye, EyeOff, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
