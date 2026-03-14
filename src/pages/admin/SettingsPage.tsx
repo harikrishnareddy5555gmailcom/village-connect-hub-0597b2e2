@@ -524,6 +524,131 @@ const SettingsPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* ── Change Password ── */}
+      <div className="vcp-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <KeyRound size={16} className="text-primary" />
+            <h2 className="font-semibold text-foreground">Change Password</h2>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setPwOpen(v => !v);
+              setCurrentPw(''); setNewPw(''); setConfirmPw('');
+            }}
+          >
+            {pwOpen ? <><X size={14} className="mr-1" />Cancel</> : <>Change</>}
+          </Button>
+        </div>
+
+        {!pwOpen && (
+          <p className="text-sm text-muted-foreground">Keep your account secure with a strong, unique password.</p>
+        )}
+
+        {pwOpen && (
+          <ChangePasswordForm
+            profile={profile}
+            onDone={() => { setPwOpen(false); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }}
+            currentPw={currentPw} setCurrentPw={setCurrentPw}
+            newPw={newPw} setNewPw={setNewPw}
+            confirmPw={confirmPw} setConfirmPw={setConfirmPw}
+            showCurrent={showCurrent} setShowCurrent={setShowCurrent}
+            showNew={showNew} setShowNew={setShowNew}
+            showConfirm={showConfirm} setShowConfirm={setShowConfirm}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Inline password change form ──────────────────────────────────────────────
+interface CPFProps {
+  profile: any;
+  onDone: () => void;
+  currentPw: string; setCurrentPw: (v: string) => void;
+  newPw: string; setNewPw: (v: string) => void;
+  confirmPw: string; setConfirmPw: (v: string) => void;
+  showCurrent: boolean; setShowCurrent: (v: boolean) => void;
+  showNew: boolean; setShowNew: (v: boolean) => void;
+  showConfirm: boolean; setShowConfirm: (v: boolean) => void;
+}
+
+const ChangePasswordForm: React.FC<CPFProps> = ({
+  profile, onDone,
+  currentPw, setCurrentPw, newPw, setNewPw, confirmPw, setConfirmPw,
+  showCurrent, setShowCurrent, showNew, setShowNew, showConfirm, setShowConfirm,
+}) => {
+  const passwordMutation = useMutation({
+    mutationFn: async () => {
+      const email = `${profile!.mobile_number}@villageconnect.app`;
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password: currentPw });
+      if (signInErr) throw new Error('Current password is incorrect');
+      const { error } = await supabase.auth.updateUser({ password: newPw });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success('Password changed!'); onDone(); },
+    onError: (err: Error) => toast.error(err.message ?? 'Failed to change password'),
+  });
+
+  const handleSubmit = () => {
+    if (!currentPw) return toast.error('Enter your current password');
+    if (newPw.length < 6) return toast.error('New password must be at least 6 characters');
+    if (newPw !== confirmPw) return toast.error('Passwords do not match');
+    if (newPw === currentPw) return toast.error('New password must differ from current');
+    passwordMutation.mutate();
+  };
+
+  const strengthLabel = newPw.length < 4 ? 'Weak' : newPw.length < 7 ? 'Fair' : newPw.length < 10 ? 'Good' : 'Strong';
+
+  return (
+    <div className="space-y-4">
+      {/* Current password */}
+      <div>
+        <Label className="text-sm">Current Password</Label>
+        <div className="relative mt-1">
+          <Input type={showCurrent ? 'text' : 'password'} value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="Enter current password" className="pr-10" />
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowCurrent(!showCurrent)}>
+            {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+      </div>
+      {/* New password */}
+      <div>
+        <Label className="text-sm">New Password</Label>
+        <div className="relative mt-1">
+          <Input type={showNew ? 'text' : 'password'} value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min. 6 characters" className="pr-10" />
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowNew(!showNew)}>
+            {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        {newPw.length > 0 && (
+          <div className="mt-1.5 flex gap-1 items-center">
+            {[1,2,3,4].map(i => (
+              <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${newPw.length >= i * 3 ? i <= 1 ? 'bg-destructive' : i <= 2 ? 'bg-warning' : i <= 3 ? 'bg-info' : 'bg-success' : 'bg-muted'}`} />
+            ))}
+            <span className="text-xs text-muted-foreground ml-1">{strengthLabel}</span>
+          </div>
+        )}
+      </div>
+      {/* Confirm password */}
+      <div>
+        <Label className="text-sm">Confirm New Password</Label>
+        <div className="relative mt-1">
+          <Input type={showConfirm ? 'text' : 'password'} value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Re-enter new password" className={`pr-10 ${confirmPw && confirmPw !== newPw ? 'border-destructive' : ''}`} />
+          <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowConfirm(!showConfirm)}>
+            {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </div>
+        {confirmPw && confirmPw !== newPw && <p className="text-xs text-destructive mt-1">Passwords do not match</p>}
+        {confirmPw && confirmPw === newPw && newPw.length >= 6 && <p className="text-xs text-success mt-1">✓ Passwords match</p>}
+      </div>
+      <Button className="btn-primary-gradient" onClick={handleSubmit} disabled={passwordMutation.isPending}>
+        {passwordMutation.isPending ? <><Loader2 size={14} className="mr-2 animate-spin" />Updating…</> : <><KeyRound size={14} className="mr-2" />Update Password</>}
+      </Button>
     </div>
   );
 };
