@@ -33,6 +33,7 @@ import MembersPage from "@/pages/MembersPage";
 import VillageStatsPage from "@/pages/VillageStatsPage";
 import MemoriesPage from "@/pages/MemoriesPage";
 import PollsPage from "@/pages/PollsPage";
+import GamesPage from "@/pages/GamesPage";
 import VillagePaymentSettingsPage from "@/pages/admin/VillagePaymentSettingsPage";
 import { Loader2 } from "lucide-react";
 
@@ -143,6 +144,7 @@ function AppRoutes() {
         <Route path="/stats" element={<VillageStatsPage />} />
         <Route path="/memories" element={<MemoriesPage />} />
         <Route path="/polls" element={<PollsPage />} />
+        <Route path="/games" element={<GamesPage />} />
       </Route>
 
       {/* Admin — also wrapped in AppLayout via AuthGuard, then AdminGuard */}

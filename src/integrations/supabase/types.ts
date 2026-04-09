@@ -825,6 +825,643 @@ export type Database = {
           },
         ]
       }
+      game_commentary: {
+        Row: {
+          commentary: string
+          created_at: string
+          created_by: string
+          game_id: string
+          id: string
+          over_marker: string | null
+          team_id: string | null
+        }
+        Insert: {
+          commentary: string
+          created_at?: string
+          created_by: string
+          game_id: string
+          id?: string
+          over_marker?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          commentary?: string
+          created_at?: string
+          created_by?: string
+          game_id?: string
+          id?: string
+          over_marker?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_commentary_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "game_commentary_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_commentary_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_cricket_player_stats: {
+        Row: {
+          balls_faced: number
+          dismissed_by_member_id: string | null
+          fours: number
+          game_id: string
+          id: string
+          is_out: boolean
+          maidens: number
+          member_id: string
+          no_balls: number
+          overs_bowled_balls: number
+          run_outs_involved: number
+          runs_conceded: number
+          runs_scored: number
+          sixes: number
+          team_id: string
+          updated_at: string
+          wicket_type: string | null
+          wickets_taken: number
+          wides: number
+        }
+        Insert: {
+          balls_faced?: number
+          dismissed_by_member_id?: string | null
+          fours?: number
+          game_id: string
+          id?: string
+          is_out?: boolean
+          maidens?: number
+          member_id: string
+          no_balls?: number
+          overs_bowled_balls?: number
+          run_outs_involved?: number
+          runs_conceded?: number
+          runs_scored?: number
+          sixes?: number
+          team_id: string
+          updated_at?: string
+          wicket_type?: string | null
+          wickets_taken?: number
+          wides?: number
+        }
+        Update: {
+          balls_faced?: number
+          dismissed_by_member_id?: string | null
+          fours?: number
+          game_id?: string
+          id?: string
+          is_out?: boolean
+          maidens?: number
+          member_id?: string
+          no_balls?: number
+          overs_bowled_balls?: number
+          run_outs_involved?: number
+          runs_conceded?: number
+          runs_scored?: number
+          sixes?: number
+          team_id?: string
+          updated_at?: string
+          wicket_type?: string | null
+          wickets_taken?: number
+          wides?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_cricket_player_stats_dismissed_by_member_id_fkey"
+            columns: ["dismissed_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_player_stats_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_player_stats_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_player_stats_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_cricket_states: {
+        Row: {
+          batting_team_id: string | null
+          bowler_member_id: string | null
+          bowling_team_id: string | null
+          current_ball_in_over: number
+          current_over: number
+          game_id: string
+          id: string
+          last_out_member_id: string | null
+          last_wicket_type: string | null
+          non_striker_member_id: string | null
+          striker_member_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          batting_team_id?: string | null
+          bowler_member_id?: string | null
+          bowling_team_id?: string | null
+          current_ball_in_over?: number
+          current_over?: number
+          game_id: string
+          id?: string
+          last_out_member_id?: string | null
+          last_wicket_type?: string | null
+          non_striker_member_id?: string | null
+          striker_member_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batting_team_id?: string | null
+          bowler_member_id?: string | null
+          bowling_team_id?: string | null
+          current_ball_in_over?: number
+          current_over?: number
+          game_id?: string
+          id?: string
+          last_out_member_id?: string | null
+          last_wicket_type?: string | null
+          non_striker_member_id?: string | null
+          striker_member_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_cricket_states_batting_team_id_fkey"
+            columns: ["batting_team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_states_bowler_member_id_fkey"
+            columns: ["bowler_member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_states_bowling_team_id_fkey"
+            columns: ["bowling_team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_states_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: true
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_states_last_out_member_id_fkey"
+            columns: ["last_out_member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_states_non_striker_member_id_fkey"
+            columns: ["non_striker_member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_cricket_states_striker_member_id_fkey"
+            columns: ["striker_member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_memories: {
+        Row: {
+          created_at: string
+          description: string | null
+          game_id: string
+          id: string
+          image_url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          game_id: string
+          id?: string
+          image_url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          game_id?: string
+          id?: string
+          image_url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_memories_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_memories_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      game_permissions: {
+        Row: {
+          can_add_commentary: boolean
+          can_control_timer: boolean
+          can_manage_game: boolean
+          can_manage_teams: boolean
+          can_update_scores: boolean
+          can_upload_memories: boolean
+          created_at: string
+          game_id: string
+          granted_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          can_add_commentary?: boolean
+          can_control_timer?: boolean
+          can_manage_game?: boolean
+          can_manage_teams?: boolean
+          can_update_scores?: boolean
+          can_upload_memories?: boolean
+          created_at?: string
+          game_id: string
+          granted_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          can_add_commentary?: boolean
+          can_control_timer?: boolean
+          can_manage_game?: boolean
+          can_manage_teams?: boolean
+          can_update_scores?: boolean
+          can_upload_memories?: boolean
+          created_at?: string
+          game_id?: string
+          granted_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_permissions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "game_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      game_substitutions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          game_id: string
+          id: string
+          note: string | null
+          player_in_name: string
+          player_out_name: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          game_id: string
+          id?: string
+          note?: string | null
+          player_in_name: string
+          player_out_name: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          game_id?: string
+          id?: string
+          note?: string | null
+          player_in_name?: string
+          player_out_name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_substitutions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "game_substitutions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_substitutions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_team_members: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          game_id: string
+          id: string
+          is_playing: boolean
+          jersey_number: string | null
+          member_name: string
+          role: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          game_id: string
+          id?: string
+          is_playing?: boolean
+          jersey_number?: string | null
+          member_name: string
+          role?: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          game_id?: string
+          id?: string
+          is_playing?: boolean
+          jersey_number?: string | null
+          member_name?: string
+          role?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_team_members_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "game_team_members_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_teams: {
+        Row: {
+          captain_name: string | null
+          color_tag: string | null
+          created_at: string
+          created_by: string | null
+          game_id: string
+          id: string
+          is_winner: boolean
+          name: string
+          overs: number
+          score_adjustment: number
+          wickets: number
+        }
+        Insert: {
+          captain_name?: string | null
+          color_tag?: string | null
+          created_at?: string
+          created_by?: string | null
+          game_id: string
+          id?: string
+          is_winner?: boolean
+          name: string
+          overs?: number
+          score_adjustment?: number
+          wickets?: number
+        }
+        Update: {
+          captain_name?: string | null
+          color_tag?: string | null
+          created_at?: string
+          created_by?: string | null
+          game_id?: string
+          id?: string
+          is_winner?: boolean
+          name?: string
+          overs?: number
+          score_adjustment?: number
+          wickets?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_teams_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "game_teams_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_timers: {
+        Row: {
+          duration: string | null
+          end_time: string | null
+          game_id: string
+          id: string
+          is_active: boolean
+          paused_elapsed_seconds: number | null
+          start_time: string | null
+          timer_mode: string | null
+        }
+        Insert: {
+          duration?: string | null
+          end_time?: string | null
+          game_id: string
+          id?: string
+          is_active?: boolean
+          paused_elapsed_seconds?: number | null
+          start_time?: string | null
+          timer_mode?: string | null
+        }
+        Update: {
+          duration?: string | null
+          end_time?: string | null
+          game_id?: string
+          id?: string
+          is_active?: boolean
+          paused_elapsed_seconds?: number | null
+          start_time?: string | null
+          timer_mode?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_timers_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      games: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          festival_date: string | null
+          game_type: string
+          id: string
+          match_duration_minutes: number | null
+          max_players_per_team: number | null
+          overs_limit: number | null
+          rules_summary: string | null
+          scoring_mode: string
+          status: string
+          target_score: number | null
+          title: string
+          updated_at: string
+          venue: string | null
+          village_id: string
+          winner_team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          festival_date?: string | null
+          game_type?: string
+          id?: string
+          match_duration_minutes?: number | null
+          max_players_per_team?: number | null
+          overs_limit?: number | null
+          rules_summary?: string | null
+          scoring_mode?: string
+          status?: string
+          target_score?: number | null
+          title: string
+          updated_at?: string
+          venue?: string | null
+          village_id: string
+          winner_team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          festival_date?: string | null
+          game_type?: string
+          id?: string
+          match_duration_minutes?: number | null
+          max_players_per_team?: number | null
+          overs_limit?: number | null
+          rules_summary?: string | null
+          scoring_mode?: string
+          status?: string
+          target_score?: number | null
+          title?: string
+          updated_at?: string
+          venue?: string | null
+          village_id?: string
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "games_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -1409,6 +2046,64 @@ export type Database = {
             columns: ["village_id"]
             isOneToOne: false
             referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scores: {
+        Row: {
+          created_by: string | null
+          description: string | null
+          game_id: string
+          id: string
+          over_marker: string | null
+          points: number
+          score_type: string
+          team_id: string | null
+          timestamp: string
+        }
+        Insert: {
+          created_by?: string | null
+          description?: string | null
+          game_id: string
+          id?: string
+          over_marker?: string | null
+          points?: number
+          score_type?: string
+          team_id?: string | null
+          timestamp?: string
+        }
+        Update: {
+          created_by?: string | null
+          description?: string | null
+          game_id?: string
+          id?: string
+          over_marker?: string | null
+          points?: number
+          score_type?: string
+          team_id?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scores_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "scores_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scores_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
             referencedColumns: ["id"]
           },
         ]
