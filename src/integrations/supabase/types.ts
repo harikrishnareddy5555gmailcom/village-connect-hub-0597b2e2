@@ -913,27 +913,42 @@ export type Database = {
           author_id: string
           caption: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           image_urls: string[]
+          is_featured: boolean | null
+          is_hidden: boolean | null
           location_tag: string | null
+          updated_at: string | null
           village_id: string
         }
         Insert: {
           author_id: string
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           image_urls?: string[]
+          is_featured?: boolean | null
+          is_hidden?: boolean | null
           location_tag?: string | null
+          updated_at?: string | null
           village_id: string
         }
         Update: {
           author_id?: string
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           image_urls?: string[]
+          is_featured?: boolean | null
+          is_hidden?: boolean | null
           location_tag?: string | null
+          updated_at?: string | null
           village_id?: string
         }
         Relationships: [
@@ -945,10 +960,81 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
           {
+            foreignKeyName: "memories_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "memories_village_id_fkey"
             columns: ["village_id"]
             isOneToOne: false
             referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memory_comments: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          memory_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          memory_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          memory_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_comments_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memory_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          memory_id: string | null
+          reaction: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          memory_id?: string | null
+          reaction?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          memory_id?: string | null
+          reaction?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_likes_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
             referencedColumns: ["id"]
           },
         ]
@@ -1593,6 +1679,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_memory_media: {
+        Args: { media_url: string; memory_id: string }
+        Returns: undefined
+      }
       get_super_admin_ids: { Args: never; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
@@ -1606,6 +1696,52 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      restore_memory: {
+        Args: { p_memory_id: string }
+        Returns: {
+          author_id: string
+          caption: string | null
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          image_urls: string[]
+          is_featured: boolean | null
+          is_hidden: boolean | null
+          location_tag: string | null
+          updated_at: string | null
+          village_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "memories"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      soft_delete_memory: {
+        Args: { p_memory_id: string }
+        Returns: {
+          author_id: string
+          caption: string | null
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string
+          image_urls: string[]
+          is_featured: boolean | null
+          is_hidden: boolean | null
+          location_tag: string | null
+          updated_at: string | null
+          village_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "memories"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "moderator" | "user"
