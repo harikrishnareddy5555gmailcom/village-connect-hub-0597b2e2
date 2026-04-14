@@ -34,6 +34,7 @@ import VillageStatsPage from "@/pages/VillageStatsPage";
 import MemoriesPage from "@/pages/MemoriesPage";
 import PollsPage from "@/pages/PollsPage";
 import GamesPage from "@/pages/GamesPage";
+import LiveScoreboardPage from "@/pages/LiveScoreboardPage";
 import VillagePaymentSettingsPage from "@/pages/admin/VillagePaymentSettingsPage";
 import { Loader2 } from "lucide-react";
 
