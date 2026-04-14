@@ -34,6 +34,7 @@ import VillageStatsPage from "@/pages/VillageStatsPage";
 import MemoriesPage from "@/pages/MemoriesPage";
 import PollsPage from "@/pages/PollsPage";
 import GamesPage from "@/pages/GamesPage";
+import LiveScoreboardPage from "@/pages/LiveScoreboardPage";
 import VillagePaymentSettingsPage from "@/pages/admin/VillagePaymentSettingsPage";
 import { Loader2 } from "lucide-react";
 
@@ -125,6 +126,7 @@ function AppRoutes() {
 
       {/* Public — accessible regardless of auth state */}
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/live" element={<LiveScoreboardPage />} />
 
       <Route path="/pending-approval" element={<PendingApprovalPage />} />
 

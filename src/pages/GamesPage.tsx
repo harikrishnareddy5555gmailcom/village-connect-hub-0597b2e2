@@ -900,6 +900,149 @@ const GamesPage: React.FC = () => {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
   });
 
+  // ─── Ball-by-Ball Cricket Recording ────────────────────
+  const recordCricketBall = useMutation({
+    mutationFn: async ({ runs, isWicket, isWide, isNoBall, wicketType, outPlayerId }: {
+      runs: number; isWicket?: boolean; isWide?: boolean; isNoBall?: boolean; wicketType?: string; outPlayerId?: string;
+    }) => {
+      if (!selectedGameId || !user?.id || !cricketState) throw new Error('Cricket state not initialized');
+      const battingTeam = teams.find(t => t.id === cricketState.batting_team_id);
+      const bowlingTeam = teams.find(t => t.id === cricketState.bowling_team_id);
+      if (!battingTeam || !bowlingTeam) throw new Error('Teams not set');
+      const strikerId = cricketState.striker_member_id;
+      const nonStrikerId = cricketState.non_striker_member_id;
+      const bowlerId = cricketState.bowler_member_id;
+      if (!strikerId || !nonStrikerId || !bowlerId) throw new Error('Set striker, non-striker, and bowler first');
+
+      const isLegalDelivery = !isWide && !isNoBall;
+      const totalRuns = runs + (isWide ? 1 : 0) + (isNoBall ? 1 : 0);
+      const overMarker = `${cricketState.current_over}.${cricketState.current_ball_in_over + 1}`;
+
+      // 1. Add score event
+      let desc = `${runs} run${runs !== 1 ? 's' : ''}`;
+      if (isWide) desc = `Wide + ${runs} run${runs !== 1 ? 's' : ''}`;
+      if (isNoBall) desc = `No ball + ${runs} run${runs !== 1 ? 's' : ''}`;
+      if (isWicket) desc = `WICKET! ${wicketType ?? 'bowled'}`;
+      await supabase.from('scores').insert({
+        game_id: selectedGameId, team_id: battingTeam.id, points: totalRuns,
+        description: desc, created_by: user.id, score_type: isWicket ? 'wicket' : 'points', over_marker: overMarker,
+      } as any);
+
+      // 2. Update batter stats
+      const ensureStats = async (memberId: string, teamId: string) => {
+        const existing = cricketPlayerStats.find(s => s.member_id === memberId);
+        if (existing) return existing;
+        const { data } = await supabase.from('game_cricket_player_stats').insert({
+          game_id: selectedGameId, member_id: memberId, team_id: teamId,
+        } as any).select('*').single();
+        return data as unknown as CricketPlayerStatsRow;
+      };
+
+      const strikerStats = await ensureStats(strikerId, battingTeam.id);
+      const bowlerStats = await ensureStats(bowlerId, bowlingTeam.id);
+
+      if (strikerStats) {
+        const updates: Record<string, number | boolean | string | null> = {
+          runs_scored: (strikerStats.runs_scored ?? 0) + runs,
+          balls_faced: (strikerStats.balls_faced ?? 0) + (isLegalDelivery ? 1 : 0),
+        };
+        if (runs === 4) updates.fours = (strikerStats.fours ?? 0) + 1;
+        if (runs === 6) updates.sixes = (strikerStats.sixes ?? 0) + 1;
+        if (isWicket) {
+          updates.is_out = true;
+          updates.wicket_type = wicketType ?? 'bowled';
+        }
+        await supabase.from('game_cricket_player_stats').update(updates as any).eq('id', strikerStats.id);
+      }
+
+      // 3. Update bowler stats
+      if (bowlerStats) {
+        const updates: Record<string, number> = {
+          overs_bowled_balls: (bowlerStats.overs_bowled_balls ?? 0) + (isLegalDelivery ? 1 : 0),
+          runs_conceded: (bowlerStats.runs_conceded ?? 0) + totalRuns,
+        };
+        if (isWicket && wicketType !== 'run_out') updates.wickets_taken = (bowlerStats.wickets_taken ?? 0) + 1;
+        if (isWide) updates.wides = (bowlerStats.wides ?? 0) + 1;
+        if (isNoBall) updates.no_balls = (bowlerStats.no_balls ?? 0) + 1;
+        await supabase.from('game_cricket_player_stats').update(updates as any).eq('id', bowlerStats.id);
+      }
+
+      // 4. Update team wickets if wicket
+      if (isWicket) {
+        await supabase.from('game_teams').update({
+          wickets: Math.max(0, (battingTeam.wickets ?? 0) + 1),
+        } as any).eq('id', battingTeam.id);
+      }
+
+      // 5. Update cricket state: ball count, over tracking, batter rotation
+      let newBall = cricketState.current_ball_in_over + (isLegalDelivery ? 1 : 0);
+      let newOver = cricketState.current_over;
+      let newStriker = strikerId;
+      let newNonStriker = nonStrikerId;
+      let newBowler = bowlerId;
+      let promptBowlerChange = false;
+
+      // Rotate batters on odd runs (1, 3, 5)
+      if (runs % 2 === 1) {
+        [newStriker, newNonStriker] = [nonStrikerId, strikerId];
+      }
+
+      // End of over: rotate strike back, increment over, prompt new bowler
+      if (newBall >= 6) {
+        newBall = 0;
+        newOver += 1;
+        // End of over swaps strike
+        [newStriker, newNonStriker] = [newNonStriker, newStriker];
+        newBowler = null as any; // Force bowler selection
+        promptBowlerChange = true;
+
+        // Update team overs
+        await supabase.from('game_teams').update({ overs: newOver } as any).eq('id', bowlingTeam.id);
+      }
+
+      // If wicket, new batter comes in at striker position
+      if (isWicket) {
+        newStriker = null as any; // Force new batter selection
+        // Mark out player
+        if (outPlayerId) {
+          await supabase.from('game_team_members').update({ is_playing: false } as any).eq('id', outPlayerId);
+        }
+      }
+
+      await supabase.from('game_cricket_states').update({
+        current_ball_in_over: newBall,
+        current_over: newOver,
+        striker_member_id: newStriker || null,
+        non_striker_member_id: newNonStriker || null,
+        bowler_member_id: newBowler || null,
+        last_wicket_type: isWicket ? (wicketType ?? 'bowled') : cricketState.last_wicket_type,
+        last_out_member_id: isWicket ? (outPlayerId ?? strikerId) : cricketState.last_out_member_id,
+      } as any).eq('game_id', selectedGameId);
+
+      // Auto commentary
+      await supabase.from('game_commentary').insert({
+        game_id: selectedGameId, team_id: battingTeam.id,
+        commentary: desc, over_marker: overMarker, created_by: user.id,
+      } as any);
+
+      return { promptBowlerChange, newOver };
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['game-cricket-state', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-cricket-player-stats', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-teams', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-teams-all'] });
+      qc.invalidateQueries({ queryKey: ['game-scores', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-scores-all'] });
+      qc.invalidateQueries({ queryKey: ['game-commentary', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-team-members', selectedGameId] });
+      if (result?.promptBowlerChange) {
+        toast.info(`Over ${result.newOver} complete! Select a new bowler.`);
+      }
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to record ball'),
+  });
+
   const updatePlayerStatus = useMutation({
     mutationFn: async ({ memberId, isPlaying }: { memberId: string; isPlaying: boolean }) => {
       const { error } = await supabase.from('game_team_members').update({ is_playing: isPlaying } as any).eq('id', memberId);
@@ -1303,6 +1446,49 @@ const GamesPage: React.FC = () => {
                         </div>
                       </div>
                       <Button className="mt-3" onClick={() => saveCricketSetup.mutate()} disabled={saveCricketSetup.isPending}>Save Cricket Setup</Button>
+                    </div>
+                  )}
+
+                  {/* Ball-by-Ball Cricket Panel */}
+                  {selectedGame.game_type === 'cricket' && canUpdateScores && cricketState && selectedGame.status === 'ongoing' && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold">🏏 Ball-by-Ball Recording</h3>
+                        <Badge variant="outline" className="text-xs">Over {cricketState.current_over}.{cricketState.current_ball_in_over}</Badge>
+                      </div>
+                      <div className="mb-3 flex flex-wrap gap-2 text-sm">
+                        <span>🏏 <strong>{getMemberName(cricketState.striker_member_id)}</strong> *</span>
+                        <span>{getMemberName(cricketState.non_striker_member_id)}</span>
+                        <span>🎳 <strong>{getMemberName(cricketState.bowler_member_id)}</strong></span>
+                      </div>
+                      {(!cricketState.striker_member_id || !cricketState.non_striker_member_id || !cricketState.bowler_member_id) && (
+                        <p className="text-sm text-destructive mb-3">⚠️ Set striker, non-striker, and bowler in Cricket Setup above before recording balls.</p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0 })}>Dot</Button>
+                        {[1, 2, 3].map(r => (
+                          <Button key={r} size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: r })}>+{r}</Button>
+                        ))}
+                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-bold" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 4 })}>4️⃣</Button>
+                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-bold" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 6 })}>6️⃣</Button>
+                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0, isWide: true })}>Wide</Button>
+                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0, isNoBall: true })}>No Ball</Button>
+                        <Button size="sm" variant="destructive" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0, isWicket: true, wicketType: cricketSetup.wicket_type, outPlayerId: cricketState.striker_member_id! })}>
+                          Wicket
+                        </Button>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Label className="text-xs">Wicket type:</Label>
+                        <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={cricketSetup.wicket_type} onChange={(e) => setCricketSetup(c => ({ ...c, wicket_type: e.target.value }))}>
+                          <option value="bowled">Bowled</option>
+                          <option value="caught">Caught</option>
+                          <option value="lbw">LBW</option>
+                          <option value="run_out">Run Out</option>
+                          <option value="stumped">Stumped</option>
+                          <option value="hit_wicket">Hit Wicket</option>
+                        </select>
+                      </div>
+                      {recordCricketBall.isPending && <p className="mt-2 text-xs text-muted-foreground animate-pulse">Recording...</p>}
                     </div>
                   )}
 
