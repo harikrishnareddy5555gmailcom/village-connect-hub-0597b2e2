@@ -1,6 +1,10 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Camera, Clock3, Eye, ImagePlus, MessageSquareText, Pause, Pencil, Play, Plus, Radio, Shield, Square, Trash2, Trophy, Users } from 'lucide-react';
+import GameScoreboard from '@/components/games/GameScoreboard';
+import QuickScorePanel from '@/components/games/QuickScorePanel';
+import ScoreTimeline from '@/components/games/ScoreTimeline';
+import CricketBallByBall from '@/components/games/CricketBallByBall';
 import {
   AlertDialog,
   AlertDialogAction,
