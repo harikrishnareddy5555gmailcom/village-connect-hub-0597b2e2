@@ -208,6 +208,12 @@ const LiveScoreboardPage: React.FC = () => {
               isCompleted={selectedGame.status === 'completed'}
               winnerTeamId={selectedGame.winner_team_id}
             />
+
+            {/* Cricket state info */}
+            {selectedGame.game_type === 'cricket' && cricketState && (
+              <div className="rounded-xl border p-4">
+                <div className="flex flex-wrap gap-4 justify-center text-sm">
+                  <span>Over: <strong>{cricketState.current_over}.{cricketState.current_ball_in_over}</strong></span>
                   {cricketState.striker_member_id && (
                     <span>🏏 {members.find(m => m.id === cricketState.striker_member_id)?.member_name ?? 'Striker'} *</span>
                   )}
@@ -284,27 +290,8 @@ const LiveScoreboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Recent events */}
-            <div className="rounded-xl border p-4">
-              <h3 className="font-semibold mb-3">Recent Events</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {scores.length === 0 && <p className="text-sm text-muted-foreground">No score events yet.</p>}
-                {scores.slice(0, 15).map(e => (
-                  <div key={e.id} className="rounded-lg bg-muted/20 px-3 py-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{teams.find(t => t.id === e.team_id)?.name ?? 'Update'}</span>
-                      <span className="text-xs text-muted-foreground">{formatIndiaTime(e.timestamp)}</span>
-                    </div>
-                    <div className="flex gap-1 mt-1">
-                      <Badge variant="outline" className="text-[10px]">{e.points > 0 ? `+${e.points}` : e.points}</Badge>
-                      <Badge variant="outline" className="text-[10px] capitalize">{e.score_type}</Badge>
-                      {e.over_marker && <Badge variant="outline" className="text-[10px]">{e.over_marker}</Badge>}
-                    </div>
-                    {e.description && <p className="text-xs text-muted-foreground mt-1">{e.description}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Score Timeline */}
+            <ScoreTimeline scores={scores} teams={teams} />
 
             {/* Teams list */}
             <div className="grid gap-4 md:grid-cols-2">
