@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,7 +34,7 @@ const typeEmoji: Record<string, string> = {
 const NotificationsBell: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  
 
   const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ['notifications', user?.id],
@@ -80,8 +80,8 @@ const NotificationsBell: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    channelRef.current = supabase
-      .channel(`notifications:${user.id}`)
+    const channel = supabase
+      .channel(`notifications-${user.id}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -97,11 +97,9 @@ const NotificationsBell: React.FC = () => {
       .subscribe();
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user?.id, queryClient]);
 
   return (
     <DropdownMenu>
