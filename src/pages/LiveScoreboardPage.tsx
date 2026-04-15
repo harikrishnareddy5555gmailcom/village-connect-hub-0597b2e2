@@ -199,28 +199,15 @@ const LiveScoreboardPage: React.FC = () => {
             )}
 
             {/* Scoreboard */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {teams.map(team => (
-                <div key={team.id} className={cn('rounded-xl border p-5 text-center', team.is_winner && 'border-yellow-400/50 bg-yellow-50/50 dark:bg-yellow-900/10')}>
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: team.color_tag ?? '#16a34a' }} />
-                    <p className="font-bold text-lg">{team.name}</p>
-                    {team.is_winner && <Trophy size={14} className="text-yellow-500" />}
-                  </div>
-                  <p className="text-5xl font-bold tabular-nums">{getTeamTotal(team.id)}</p>
-                  {selectedGame.game_type === 'cricket' && (
-                    <p className="text-sm text-muted-foreground mt-1">{team.wickets} wkts · {team.overs} overs</p>
-                  )}
-                  {team.captain_name && <p className="text-xs text-muted-foreground mt-1">Captain: {team.captain_name}</p>}
-                </div>
-              ))}
-            </div>
-
-            {/* Cricket state info */}
-            {selectedGame.game_type === 'cricket' && cricketState && (
-              <div className="rounded-xl border p-4">
-                <div className="flex flex-wrap gap-4 justify-center text-sm">
-                  <span>Over: <strong>{cricketState.current_over}.{cricketState.current_ball_in_over}</strong></span>
+            <GameScoreboard
+              teams={teams}
+              scores={scores}
+              gameType={selectedGame.game_type}
+              oversLimit={selectedGame.overs_limit}
+              targetScore={null}
+              isCompleted={selectedGame.status === 'completed'}
+              winnerTeamId={selectedGame.winner_team_id}
+            />
                   {cricketState.striker_member_id && (
                     <span>🏏 {members.find(m => m.id === cricketState.striker_member_id)?.member_name ?? 'Striker'} *</span>
                   )}
