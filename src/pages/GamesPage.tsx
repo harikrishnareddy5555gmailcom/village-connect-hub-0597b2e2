@@ -1392,21 +1392,26 @@ const GamesPage: React.FC = () => {
 
                 {/* ─── Live Tab ─── */}
                 <TabsContent value="live" className="mt-5 space-y-5">
-                  {/* Score Board */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {teams.map((team) => (
-                      <div key={team.id} className="rounded-xl border p-4 text-center">
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: team.color_tag ?? '#16a34a' }} />
-                          <p className="font-bold text-lg">{team.name}</p>
-                        </div>
-                        <p className="text-4xl font-bold">{getTeamTotal(team.id)}</p>
-                        {selectedGame.game_type === 'cricket' && (
-                          <p className="text-sm text-muted-foreground mt-1">{team.wickets} wickets · {team.overs} overs</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                   {/* Scoreboard */}
+                   <GameScoreboard
+                     teams={teams}
+                     scores={scores}
+                     gameType={selectedGame.game_type}
+                     oversLimit={selectedGame.overs_limit}
+                     targetScore={selectedGame.target_score}
+                     isCompleted={selectedGame.status === 'completed'}
+                     winnerTeamId={selectedGame.winner_team_id}
+                   />
+
+                   {/* Quick Score Panel - All Game Types */}
+                   {canUpdateScores && selectedGame.status === 'ongoing' && (
+                     <QuickScorePanel
+                       teams={teams}
+                       gameType={selectedGame.game_type}
+                       isPending={quickScore.isPending}
+                       onQuickScore={(params) => quickScore.mutate(params)}
+                     />
+                   )}
 
                   {/* Cricket Setup */}
                   {selectedGame.game_type === 'cricket' && canUpdateScores && (
