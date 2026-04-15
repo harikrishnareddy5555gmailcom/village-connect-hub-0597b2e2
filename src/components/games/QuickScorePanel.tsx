@@ -5,11 +5,14 @@ import { cn } from '@/lib/utils';
 
 type TeamRow = {
   id: string;
+  game_id: string;
   name: string;
   color_tag: string | null;
+  captain_name: string | null;
   wickets: number;
   overs: number;
   score_adjustment: number;
+  is_winner: boolean;
 };
 
 interface QuickScorePanelProps {
