@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Radio, Trophy } from 'lucide-react';
+import GameScoreboard from '@/components/games/GameScoreboard';
+import ScoreTimeline from '@/components/games/ScoreTimeline';
 
 const formatIndiaDate = (d: string) => { try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; } };
 const formatIndiaTime = (d: string) => { try { return format(new Date(d), 'hh:mm a'); } catch { return d; } };
