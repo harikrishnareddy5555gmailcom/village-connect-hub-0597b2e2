@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Radio, Trophy } from 'lucide-react';
+import GameScoreboard from '@/components/games/GameScoreboard';
+import ScoreTimeline from '@/components/games/ScoreTimeline';
 
 const formatIndiaDate = (d: string) => { try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; } };
 const formatIndiaTime = (d: string) => { try { return format(new Date(d), 'hh:mm a'); } catch { return d; } };
@@ -197,22 +199,15 @@ const LiveScoreboardPage: React.FC = () => {
             )}
 
             {/* Scoreboard */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {teams.map(team => (
-                <div key={team.id} className={cn('rounded-xl border p-5 text-center', team.is_winner && 'border-yellow-400/50 bg-yellow-50/50 dark:bg-yellow-900/10')}>
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: team.color_tag ?? '#16a34a' }} />
-                    <p className="font-bold text-lg">{team.name}</p>
-                    {team.is_winner && <Trophy size={14} className="text-yellow-500" />}
-                  </div>
-                  <p className="text-5xl font-bold tabular-nums">{getTeamTotal(team.id)}</p>
-                  {selectedGame.game_type === 'cricket' && (
-                    <p className="text-sm text-muted-foreground mt-1">{team.wickets} wkts · {team.overs} overs</p>
-                  )}
-                  {team.captain_name && <p className="text-xs text-muted-foreground mt-1">Captain: {team.captain_name}</p>}
-                </div>
-              ))}
-            </div>
+            <GameScoreboard
+              teams={teams}
+              scores={scores}
+              gameType={selectedGame.game_type}
+              oversLimit={selectedGame.overs_limit}
+              targetScore={null}
+              isCompleted={selectedGame.status === 'completed'}
+              winnerTeamId={selectedGame.winner_team_id}
+            />
 
             {/* Cricket state info */}
             {selectedGame.game_type === 'cricket' && cricketState && (
@@ -295,27 +290,8 @@ const LiveScoreboardPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Recent events */}
-            <div className="rounded-xl border p-4">
-              <h3 className="font-semibold mb-3">Recent Events</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {scores.length === 0 && <p className="text-sm text-muted-foreground">No score events yet.</p>}
-                {scores.slice(0, 15).map(e => (
-                  <div key={e.id} className="rounded-lg bg-muted/20 px-3 py-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{teams.find(t => t.id === e.team_id)?.name ?? 'Update'}</span>
-                      <span className="text-xs text-muted-foreground">{formatIndiaTime(e.timestamp)}</span>
-                    </div>
-                    <div className="flex gap-1 mt-1">
-                      <Badge variant="outline" className="text-[10px]">{e.points > 0 ? `+${e.points}` : e.points}</Badge>
-                      <Badge variant="outline" className="text-[10px] capitalize">{e.score_type}</Badge>
-                      {e.over_marker && <Badge variant="outline" className="text-[10px]">{e.over_marker}</Badge>}
-                    </div>
-                    {e.description && <p className="text-xs text-muted-foreground mt-1">{e.description}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Score Timeline */}
+            <ScoreTimeline scores={scores} teams={teams} />
 
             {/* Teams list */}
             <div className="grid gap-4 md:grid-cols-2">

@@ -1,6 +1,10 @@
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Camera, Clock3, Eye, ImagePlus, MessageSquareText, Pause, Pencil, Play, Plus, Radio, Shield, Square, Trash2, Trophy, Users } from 'lucide-react';
+import GameScoreboard from '@/components/games/GameScoreboard';
+import QuickScorePanel from '@/components/games/QuickScorePanel';
+import ScoreTimeline from '@/components/games/ScoreTimeline';
+import CricketBallByBall from '@/components/games/CricketBallByBall';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1388,21 +1392,26 @@ const GamesPage: React.FC = () => {
 
                 {/* ─── Live Tab ─── */}
                 <TabsContent value="live" className="mt-5 space-y-5">
-                  {/* Score Board */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {teams.map((team) => (
-                      <div key={team.id} className="rounded-xl border p-4 text-center">
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                          <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: team.color_tag ?? '#16a34a' }} />
-                          <p className="font-bold text-lg">{team.name}</p>
-                        </div>
-                        <p className="text-4xl font-bold">{getTeamTotal(team.id)}</p>
-                        {selectedGame.game_type === 'cricket' && (
-                          <p className="text-sm text-muted-foreground mt-1">{team.wickets} wickets · {team.overs} overs</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                   {/* Scoreboard */}
+                   <GameScoreboard
+                     teams={teams}
+                     scores={scores}
+                     gameType={selectedGame.game_type}
+                     oversLimit={selectedGame.overs_limit}
+                     targetScore={selectedGame.target_score}
+                     isCompleted={selectedGame.status === 'completed'}
+                     winnerTeamId={selectedGame.winner_team_id}
+                   />
+
+                   {/* Quick Score Panel - All Game Types */}
+                   {canUpdateScores && selectedGame.status === 'ongoing' && (
+                     <QuickScorePanel
+                       teams={teams}
+                       gameType={selectedGame.game_type}
+                       isPending={quickScore.isPending}
+                       onQuickScore={(params) => quickScore.mutate(params)}
+                     />
+                   )}
 
                   {/* Cricket Setup */}
                   {selectedGame.game_type === 'cricket' && canUpdateScores && (
@@ -1450,49 +1459,16 @@ const GamesPage: React.FC = () => {
                   )}
 
                   {/* Ball-by-Ball Cricket Panel */}
-                  {selectedGame.game_type === 'cricket' && canUpdateScores && cricketState && selectedGame.status === 'ongoing' && (
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold">🏏 Ball-by-Ball Recording</h3>
-                        <Badge variant="outline" className="text-xs">Over {cricketState.current_over}.{cricketState.current_ball_in_over}</Badge>
-                      </div>
-                      <div className="mb-3 flex flex-wrap gap-2 text-sm">
-                        <span>🏏 <strong>{getMemberName(cricketState.striker_member_id)}</strong> *</span>
-                        <span>{getMemberName(cricketState.non_striker_member_id)}</span>
-                        <span>🎳 <strong>{getMemberName(cricketState.bowler_member_id)}</strong></span>
-                      </div>
-                      {(!cricketState.striker_member_id || !cricketState.non_striker_member_id || !cricketState.bowler_member_id) && (
-                        <p className="text-sm text-destructive mb-3">⚠️ Set striker, non-striker, and bowler in Cricket Setup above before recording balls.</p>
-                      )}
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0 })}>Dot</Button>
-                        {[1, 2, 3].map(r => (
-                          <Button key={r} size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: r })}>+{r}</Button>
-                        ))}
-                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-bold" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 4 })}>4️⃣</Button>
-                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs font-bold" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 6 })}>6️⃣</Button>
-                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0, isWide: true })}>Wide</Button>
-                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0, isNoBall: true })}>No Ball</Button>
-                        <Button size="sm" variant="destructive" className="h-8 px-3 text-xs" disabled={recordCricketBall.isPending || !cricketState.striker_member_id} onClick={() => recordCricketBall.mutate({ runs: 0, isWicket: true, wicketType: cricketSetup.wicket_type, outPlayerId: cricketState.striker_member_id! })}>
-                          Wicket
-                        </Button>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Label className="text-xs">Wicket type:</Label>
-                        <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={cricketSetup.wicket_type} onChange={(e) => setCricketSetup(c => ({ ...c, wicket_type: e.target.value }))}>
-                          <option value="bowled">Bowled</option>
-                          <option value="caught">Caught</option>
-                          <option value="lbw">LBW</option>
-                          <option value="run_out">Run Out</option>
-                          <option value="stumped">Stumped</option>
-                          <option value="hit_wicket">Hit Wicket</option>
-                        </select>
-                      </div>
-                      {recordCricketBall.isPending && <p className="mt-2 text-xs text-muted-foreground animate-pulse">Recording...</p>}
-                    </div>
-                  )}
-
-                  {/* Detailed Score Form */}
+                   {selectedGame.game_type === 'cricket' && canUpdateScores && cricketState && selectedGame.status === 'ongoing' && (
+                     <CricketBallByBall
+                       cricketState={cricketState}
+                       members={members}
+                       isPending={recordCricketBall.isPending}
+                       wicketType={cricketSetup.wicket_type}
+                       onWicketTypeChange={(type) => setCricketSetup(c => ({ ...c, wicket_type: type }))}
+                       onRecordBall={(params) => recordCricketBall.mutate(params)}
+                     />
+                   )}
                   {canUpdateScores && (
                     <div className="rounded-xl border p-4">
                       <h3 className="font-semibold mb-3">📋 Detailed Score</h3>
@@ -1556,26 +1532,8 @@ const GamesPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Recent Events */}
-                  <div className="rounded-xl border p-4">
-                    <h4 className="font-medium mb-3">Recent Events</h4>
-                    <div className="space-y-2">
-                      {scores.length === 0 && <p className="text-sm text-muted-foreground">No score events yet.</p>}
-                      {scores.slice(0, 10).map((entry) => (
-                        <div key={entry.id} className="rounded-lg bg-muted/20 px-3 py-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium">{getTeamName(entry.team_id)}</span>
-                            <span className="text-xs text-muted-foreground">{formatIndiaTime(entry.timestamp)}</span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <Badge variant="outline" className="text-[10px]">{entry.points !== 0 ? `${entry.points > 0 ? '+' : ''}${entry.points}` : '0'}</Badge>
-                            <Badge variant="outline" className="text-[10px] capitalize">{entry.score_type}</Badge>
-                          </div>
-                          {entry.description && <p className="mt-1 text-xs text-muted-foreground">{entry.description}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                   {/* Score Timeline */}
+                   <ScoreTimeline scores={scores} teams={teams} />
 
                   {/* Substitutions */}
                   {substitutions.length > 0 && (
