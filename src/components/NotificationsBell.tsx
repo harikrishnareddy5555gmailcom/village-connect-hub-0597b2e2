@@ -80,8 +80,8 @@ const NotificationsBell: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    channelRef.current = supabase
-      .channel(`notifications:${user.id}`)
+    const channel = supabase
+      .channel(`notifications-${user.id}-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -97,11 +97,9 @@ const NotificationsBell: React.FC = () => {
       .subscribe();
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user?.id, queryClient]);
 
   return (
     <DropdownMenu>
