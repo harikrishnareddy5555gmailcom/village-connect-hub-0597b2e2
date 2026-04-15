@@ -1532,26 +1532,8 @@ const GamesPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Recent Events */}
-                  <div className="rounded-xl border p-4">
-                    <h4 className="font-medium mb-3">Recent Events</h4>
-                    <div className="space-y-2">
-                      {scores.length === 0 && <p className="text-sm text-muted-foreground">No score events yet.</p>}
-                      {scores.slice(0, 10).map((entry) => (
-                        <div key={entry.id} className="rounded-lg bg-muted/20 px-3 py-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium">{getTeamName(entry.team_id)}</span>
-                            <span className="text-xs text-muted-foreground">{formatIndiaTime(entry.timestamp)}</span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <Badge variant="outline" className="text-[10px]">{entry.points !== 0 ? `${entry.points > 0 ? '+' : ''}${entry.points}` : '0'}</Badge>
-                            <Badge variant="outline" className="text-[10px] capitalize">{entry.score_type}</Badge>
-                          </div>
-                          {entry.description && <p className="mt-1 text-xs text-muted-foreground">{entry.description}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                   {/* Score Timeline */}
+                   <ScoreTimeline scores={scores} teams={teams} />
 
                   {/* Substitutions */}
                   {substitutions.length > 0 && (
