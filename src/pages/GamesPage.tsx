@@ -1080,6 +1080,42 @@ const GamesPage: React.FC = () => {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
   });
 
+  const recordPlayerAction = useMutation({
+    mutationFn: async ({ teamId, memberId, actionType, points, description }: {
+      teamId: string; memberId: string; actionType: string; points: number; description: string;
+    }) => {
+      if (!selectedGameId || !user?.id) throw new Error('Select a game first');
+      const { error } = await supabase.from('game_player_actions').insert({
+        game_id: selectedGameId,
+        team_id: teamId,
+        member_id: memberId,
+        action_type: actionType,
+        points,
+        description,
+        created_by: user.id,
+      } as any);
+      if (error) throw error;
+      // Also add to scores for team total
+      if (points > 0) {
+        await supabase.from('scores').insert({
+          game_id: selectedGameId,
+          team_id: teamId,
+          points,
+          description,
+          created_by: user.id,
+          score_type: 'points',
+        } as any);
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['game-player-actions', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-scores', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-scores-all'] });
+      toast.success('Action recorded');
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to record action'),
+  });
+
   // ─── Render ────────────────────────────────────────────
   return (
     <div className="space-y-6">
