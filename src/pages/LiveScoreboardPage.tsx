@@ -113,12 +113,23 @@ const LiveScoreboardPage: React.FC = () => {
     refetchInterval: 5000,
   });
 
+  const playerActionsQuery = useQuery({
+    queryKey: ['public-player-actions', selectedGameId],
+    enabled: !!selectedGameId,
+    queryFn: async () => {
+      const { data } = await supabase.from('game_player_actions').select('*').eq('game_id', selectedGameId!).order('created_at', { ascending: false });
+      return (data ?? []) as unknown as PlayerActionRow[];
+    },
+    refetchInterval: 5000,
+  });
+
   const teams = teamsQuery.data ?? [];
   const scores = scoresQuery.data ?? [];
   const commentary = commentaryQuery.data ?? [];
   const members = membersQuery.data ?? [];
   const cricketState = cricketStateQuery.data ?? null;
   const cricketStats = cricketStatsQuery.data ?? [];
+  const playerActions = playerActionsQuery.data ?? [];
   const villages = villagesQuery.data ?? [];
 
   const getTeamTotal = (teamId: string) =>
@@ -139,6 +150,7 @@ const LiveScoreboardPage: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_teams', filter: `game_id=eq.${selectedGameId}` }, () => {})
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_cricket_states', filter: `game_id=eq.${selectedGameId}` }, () => {})
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_cricket_player_stats', filter: `game_id=eq.${selectedGameId}` }, () => {})
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_player_actions', filter: `game_id=eq.${selectedGameId}` }, () => {})
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedGameId]);
