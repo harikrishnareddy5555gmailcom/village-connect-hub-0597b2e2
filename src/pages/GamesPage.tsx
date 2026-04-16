@@ -570,6 +570,7 @@ const GamesPage: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_substitutions' }, () => qc.invalidateQueries({ queryKey: ['game-substitutions'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_permissions' }, () => qc.invalidateQueries({ queryKey: ['game-permissions'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_timers' }, () => qc.invalidateQueries({ queryKey: ['game-timers-all'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_player_actions' }, () => qc.invalidateQueries({ queryKey: ['game-player-actions'] }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [qc, villageId]);
