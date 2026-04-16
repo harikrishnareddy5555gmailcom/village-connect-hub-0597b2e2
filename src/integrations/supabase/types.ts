@@ -1173,6 +1173,67 @@ export type Database = {
           },
         ]
       }
+      game_player_actions: {
+        Row: {
+          action_type: string
+          created_at: string
+          created_by: string
+          description: string | null
+          game_id: string
+          id: string
+          member_id: string
+          over_marker: string | null
+          points: number
+          team_id: string
+        }
+        Insert: {
+          action_type?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          game_id: string
+          id?: string
+          member_id: string
+          over_marker?: string | null
+          points?: number
+          team_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          game_id?: string
+          id?: string
+          member_id?: string
+          over_marker?: string | null
+          points?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_player_actions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_player_actions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "game_team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_player_actions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "game_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_substitutions: {
         Row: {
           created_at: string
