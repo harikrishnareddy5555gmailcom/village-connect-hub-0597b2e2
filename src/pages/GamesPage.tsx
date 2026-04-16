@@ -146,6 +146,17 @@ type GameMemoryRow = {
   created_at: string;
 };
 
+type PlayerActionRow = {
+  id: string;
+  game_id: string;
+  team_id: string;
+  member_id: string;
+  action_type: string;
+  points: number;
+  description: string | null;
+  created_at: string;
+};
+
 type PermissionRow = {
   id: string;
   game_id: string;
