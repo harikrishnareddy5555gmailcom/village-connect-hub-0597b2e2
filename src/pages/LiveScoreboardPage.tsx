@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { Radio, Trophy } from 'lucide-react';
 import GameScoreboard from '@/components/games/GameScoreboard';
 import ScoreTimeline from '@/components/games/ScoreTimeline';
+import PlayerStatsView from '@/components/games/PlayerStatsView';
 
 const formatIndiaDate = (d: string) => { try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; } };
 const formatIndiaTime = (d: string) => { try { return format(new Date(d), 'hh:mm a'); } catch { return d; } };
