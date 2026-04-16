@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { Radio, Trophy } from 'lucide-react';
 import GameScoreboard from '@/components/games/GameScoreboard';
 import ScoreTimeline from '@/components/games/ScoreTimeline';
+import PlayerStatsView from '@/components/games/PlayerStatsView';
 
 const formatIndiaDate = (d: string) => { try { return format(new Date(d), 'dd MMM yyyy'); } catch { return d; } };
 const formatIndiaTime = (d: string) => { try { return format(new Date(d), 'hh:mm a'); } catch { return d; } };
@@ -18,6 +19,7 @@ type CommentaryRow = { id: string; game_id: string; team_id: string | null; comm
 type MemberRow = { id: string; team_id: string; member_name: string; role: string; jersey_number: string | null; is_playing: boolean; };
 type CricketStateRow = { id: string; game_id: string; batting_team_id: string | null; bowling_team_id: string | null; striker_member_id: string | null; non_striker_member_id: string | null; bowler_member_id: string | null; current_over: number; current_ball_in_over: number; };
 type CricketStatsRow = { id: string; member_id: string; team_id: string; runs_scored: number; balls_faced: number; fours: number; sixes: number; is_out: boolean; wicket_type: string | null; overs_bowled_balls: number; runs_conceded: number; wickets_taken: number; wides: number; no_balls: number; };
+type PlayerActionRow = { id: string; game_id: string; team_id: string; member_id: string; action_type: string; points: number; description: string | null; created_at: string; };
 
 const LiveScoreboardPage: React.FC = () => {
   const [selectedGameId, setSelectedGameId] = React.useState<string | null>(null);
@@ -111,12 +113,23 @@ const LiveScoreboardPage: React.FC = () => {
     refetchInterval: 5000,
   });
 
+  const playerActionsQuery = useQuery({
+    queryKey: ['public-player-actions', selectedGameId],
+    enabled: !!selectedGameId,
+    queryFn: async () => {
+      const { data } = await supabase.from('game_player_actions').select('*').eq('game_id', selectedGameId!).order('created_at', { ascending: false });
+      return (data ?? []) as unknown as PlayerActionRow[];
+    },
+    refetchInterval: 5000,
+  });
+
   const teams = teamsQuery.data ?? [];
   const scores = scoresQuery.data ?? [];
   const commentary = commentaryQuery.data ?? [];
   const members = membersQuery.data ?? [];
   const cricketState = cricketStateQuery.data ?? null;
   const cricketStats = cricketStatsQuery.data ?? [];
+  const playerActions = playerActionsQuery.data ?? [];
   const villages = villagesQuery.data ?? [];
 
   const getTeamTotal = (teamId: string) =>
@@ -137,6 +150,7 @@ const LiveScoreboardPage: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_teams', filter: `game_id=eq.${selectedGameId}` }, () => {})
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_cricket_states', filter: `game_id=eq.${selectedGameId}` }, () => {})
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_cricket_player_stats', filter: `game_id=eq.${selectedGameId}` }, () => {})
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_player_actions', filter: `game_id=eq.${selectedGameId}` }, () => {})
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [selectedGameId]);
@@ -271,6 +285,16 @@ const LiveScoreboardPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* Player Performance Stats - All Game Types */}
+            {playerActions.length > 0 && (
+              <PlayerStatsView
+                teams={teams}
+                members={members}
+                playerActions={playerActions}
+                gameType={selectedGame.game_type}
+              />
             )}
 
             {/* Commentary feed */}

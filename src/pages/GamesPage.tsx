@@ -5,6 +5,7 @@ import GameScoreboard from '@/components/games/GameScoreboard';
 import QuickScorePanel from '@/components/games/QuickScorePanel';
 import ScoreTimeline from '@/components/games/ScoreTimeline';
 import CricketBallByBall from '@/components/games/CricketBallByBall';
+import PlayerScoreTracker from '@/components/games/PlayerScoreTracker';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -141,6 +142,17 @@ type GameMemoryRow = {
   game_id: string;
   user_id: string;
   image_url: string | null;
+  description: string | null;
+  created_at: string;
+};
+
+type PlayerActionRow = {
+  id: string;
+  game_id: string;
+  team_id: string;
+  member_id: string;
+  action_type: string;
+  points: number;
   description: string | null;
   created_at: string;
 };
@@ -419,6 +431,16 @@ const GamesPage: React.FC = () => {
     },
   });
 
+  const playerActionsQuery = useQuery({
+    queryKey: ['game-player-actions', selectedGameId],
+    enabled: !!selectedGameId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('game_player_actions').select('*').eq('game_id', selectedGameId!).order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PlayerActionRow[];
+    },
+  });
+
   const villageMembersQuery = useQuery({
     queryKey: ['game-village-members', villageId],
     enabled: !!villageId,
@@ -446,6 +468,7 @@ const GamesPage: React.FC = () => {
   const memories = memoriesQuery.data ?? [];
   const cricketState = cricketStateQuery.data ?? null;
   const cricketPlayerStats = cricketStatsQuery.data ?? [];
+  const playerActions = playerActionsQuery.data ?? [];
   const villageMembers = villageMembersQuery.data ?? [];
   const timers = timersQuery.data ?? [];
 
@@ -547,6 +570,7 @@ const GamesPage: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_substitutions' }, () => qc.invalidateQueries({ queryKey: ['game-substitutions'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_permissions' }, () => qc.invalidateQueries({ queryKey: ['game-permissions'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_timers' }, () => qc.invalidateQueries({ queryKey: ['game-timers-all'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_player_actions' }, () => qc.invalidateQueries({ queryKey: ['game-player-actions'] }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [qc, villageId]);
@@ -1056,6 +1080,42 @@ const GamesPage: React.FC = () => {
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed'),
   });
 
+  const recordPlayerAction = useMutation({
+    mutationFn: async ({ teamId, memberId, actionType, points, description }: {
+      teamId: string; memberId: string; actionType: string; points: number; description: string;
+    }) => {
+      if (!selectedGameId || !user?.id) throw new Error('Select a game first');
+      const { error } = await supabase.from('game_player_actions').insert({
+        game_id: selectedGameId,
+        team_id: teamId,
+        member_id: memberId,
+        action_type: actionType,
+        points,
+        description,
+        created_by: user.id,
+      } as any);
+      if (error) throw error;
+      // Also add to scores for team total
+      if (points > 0) {
+        await supabase.from('scores').insert({
+          game_id: selectedGameId,
+          team_id: teamId,
+          points,
+          description,
+          created_by: user.id,
+          score_type: 'points',
+        } as any);
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['game-player-actions', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-scores', selectedGameId] });
+      qc.invalidateQueries({ queryKey: ['game-scores-all'] });
+      toast.success('Action recorded');
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to record action'),
+  });
+
   // ─── Render ────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -1410,6 +1470,19 @@ const GamesPage: React.FC = () => {
                        gameType={selectedGame.game_type}
                        isPending={quickScore.isPending}
                        onQuickScore={(params) => quickScore.mutate(params)}
+                     />
+                   )}
+
+                   {/* Player Score Tracker - All Game Types */}
+                   {selectedGame.status === 'ongoing' && members.length > 0 && (
+                     <PlayerScoreTracker
+                       teams={teams}
+                       members={members}
+                       playerActions={playerActions}
+                       gameType={selectedGame.game_type}
+                       isPending={recordPlayerAction.isPending}
+                       canScore={canUpdateScores}
+                       onPlayerAction={(params) => recordPlayerAction.mutate(params)}
                      />
                    )}
 
