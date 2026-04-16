@@ -468,6 +468,7 @@ const GamesPage: React.FC = () => {
   const memories = memoriesQuery.data ?? [];
   const cricketState = cricketStateQuery.data ?? null;
   const cricketPlayerStats = cricketStatsQuery.data ?? [];
+  const playerActions = playerActionsQuery.data ?? [];
   const villageMembers = villageMembersQuery.data ?? [];
   const timers = timersQuery.data ?? [];
 
