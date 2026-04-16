@@ -1473,6 +1473,19 @@ const GamesPage: React.FC = () => {
                      />
                    )}
 
+                   {/* Player Score Tracker - All Game Types */}
+                   {selectedGame.status === 'ongoing' && members.length > 0 && (
+                     <PlayerScoreTracker
+                       teams={teams}
+                       members={members}
+                       playerActions={playerActions}
+                       gameType={selectedGame.game_type}
+                       isPending={recordPlayerAction.isPending}
+                       canScore={canUpdateScores}
+                       onPlayerAction={(params) => recordPlayerAction.mutate(params)}
+                     />
+                   )}
+
                   {/* Cricket Setup */}
                   {selectedGame.game_type === 'cricket' && canUpdateScores && (
                     <div className="rounded-xl border p-4">
