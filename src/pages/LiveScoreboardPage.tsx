@@ -19,6 +19,7 @@ type CommentaryRow = { id: string; game_id: string; team_id: string | null; comm
 type MemberRow = { id: string; team_id: string; member_name: string; role: string; jersey_number: string | null; is_playing: boolean; };
 type CricketStateRow = { id: string; game_id: string; batting_team_id: string | null; bowling_team_id: string | null; striker_member_id: string | null; non_striker_member_id: string | null; bowler_member_id: string | null; current_over: number; current_ball_in_over: number; };
 type CricketStatsRow = { id: string; member_id: string; team_id: string; runs_scored: number; balls_faced: number; fours: number; sixes: number; is_out: boolean; wicket_type: string | null; overs_bowled_balls: number; runs_conceded: number; wickets_taken: number; wides: number; no_balls: number; };
+type PlayerActionRow = { id: string; game_id: string; team_id: string; member_id: string; action_type: string; points: number; description: string | null; created_at: string; };
 
 const LiveScoreboardPage: React.FC = () => {
   const [selectedGameId, setSelectedGameId] = React.useState<string | null>(null);
