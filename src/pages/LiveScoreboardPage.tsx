@@ -287,6 +287,16 @@ const LiveScoreboardPage: React.FC = () => {
               </div>
             )}
 
+            {/* Player Performance Stats - All Game Types */}
+            {playerActions.length > 0 && (
+              <PlayerStatsView
+                teams={teams}
+                members={members}
+                playerActions={playerActions}
+                gameType={selectedGame.game_type}
+              />
+            )}
+
             {/* Commentary feed */}
             <div className="rounded-xl border p-4">
               <h3 className="font-semibold mb-3">📢 Live Commentary</h3>
