@@ -5,6 +5,7 @@ import GameScoreboard from '@/components/games/GameScoreboard';
 import QuickScorePanel from '@/components/games/QuickScorePanel';
 import ScoreTimeline from '@/components/games/ScoreTimeline';
 import CricketBallByBall from '@/components/games/CricketBallByBall';
+import PlayerScoreTracker from '@/components/games/PlayerScoreTracker';
 import {
   AlertDialog,
   AlertDialogAction,
