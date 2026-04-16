@@ -431,6 +431,16 @@ const GamesPage: React.FC = () => {
     },
   });
 
+  const playerActionsQuery = useQuery({
+    queryKey: ['game-player-actions', selectedGameId],
+    enabled: !!selectedGameId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('game_player_actions').select('*').eq('game_id', selectedGameId!).order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PlayerActionRow[];
+    },
+  });
+
   const villageMembersQuery = useQuery({
     queryKey: ['game-village-members', villageId],
     enabled: !!villageId,
